@@ -6,6 +6,8 @@
   <node name="ajax_TARGET" pkg="target_detection" type="target" args="$(arg name)" />
   <node name="ajax_OBSTACLE" pkg="obstacle_detection" type="obstacle" args="$(arg name)" />
 
+  <node launch-prefix="xterm -e gdb -ex run --args" name="ajax__MOBILITY" pkg="mobility" type="mobility" args="$(arg name) sim" />
+  
   <node pkg="robot_localization" type="navsat_transform_node" name="ajax_NAVSAT" respawn="false">
 
       <param name="magnetic_declination_radians" value="0.1530654"/>
