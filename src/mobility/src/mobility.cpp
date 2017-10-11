@@ -25,18 +25,22 @@
 
 #include <signal.h>
 #include <math.h>
+#include "mobility.h"
 
 using namespace std;
 
 // Random number generator
 random_numbers::RandomNumberGenerator *rng;
 
-
+/*
+ * ROVER_REFS
+ */
+ROVER_REFS rover_refs;
+std::vector<ROVER_REFS> swarm;
 
 string rover_name;
 char host[128];
 bool is_published_name = false;
-
 
 int simulation_mode = 0;
 float mobility_loop_time_step = 0.1;
@@ -60,6 +64,12 @@ ros::Publisher target_collected_publisher;
 ros::Publisher angular_publisher;
 ros::Publisher messagePublish;
 ros::Publisher debug_publisher;
+/*
+ * Added Publishers
+ */
+ros::Publisher currentPose;
+ros::Publisher globalAverageHeading;
+ros::Publisher localAverageHeading;
 
 //Subscribers
 ros::Subscriber joySubscriber;
@@ -67,8 +77,11 @@ ros::Subscriber modeSubscriber;
 ros::Subscriber targetSubscriber;
 ros::Subscriber obstacleSubscriber;
 ros::Subscriber odometrySubscriber;
-
 ros::Subscriber messageSubscriber;
+/*
+ * Added subscibers
+ */
+ros::Subscriber headingSubscriber;
 
 //Timers
 ros::Timer stateMachineTimer;
@@ -91,6 +104,10 @@ void mobilityStateMachine(const ros::TimerEvent &);
 void publishStatusTimerEventHandler(const ros::TimerEvent &event);
 void killSwitchTimerEventHandler(const ros::TimerEvent &event);
 void messageHandler(const std_msgs::String::ConstPtr &message);
+/*
+ * Added Handlers
+ */
+void headingHandler(const nav_msgs::Odometry::ConstPtr &message);
 
 int main(int argc, char **argv)
 {
@@ -120,6 +137,10 @@ int main(int argc, char **argv)
     obstacleSubscriber = mNH.subscribe((rover_name + "/obstacle"), 10, obstacleHandler);
     odometrySubscriber = mNH.subscribe((rover_name + "/odom/ekf"), 10, odometryHandler);
     messageSubscriber = mNH.subscribe(("messages"), 10, messageHandler);
+    /*
+     * Added subsciber instantiation
+     */
+    headingSubscriber = mNH.subscribe((rover_name + "/odom/ekf"), 10, headingHandler);
 
     status_publisher = mNH.advertise<std_msgs::String>((rover_name + "/status"), 1, true);
     velocityPublish = mNH.advertise<geometry_msgs::Twist>((rover_name + "/velocity"), 10);
@@ -132,6 +153,12 @@ int main(int argc, char **argv)
     stateMachineTimer = mNH.createTimer(ros::Duration(mobility_loop_time_step), mobilityStateMachine);
     debug_publisher = mNH.advertise<std_msgs::String>("/debug", 1, true);
     messagePublish = mNH.advertise<std_msgs::String>(("messages"), 10 , true);
+    /*
+     * Added advertisers instatiation
+     */
+    currentPose = mNH.advertise<std_msgs::String>((rover_name + "/heading"), 10, true);
+    globalAverageHeading = mNH.advertise<std_msgs::String>((rover_name + "/global_heading"), 10, true);
+    localAverageHeading = mNH.advertise<std_msgs::String>((rover_name + "/local_heading"), 10, true);
     
     ros::spin();
     return EXIT_SUCCESS;
@@ -184,7 +211,7 @@ void setVelocity(double linearVel, double angularVel)
     geometry_msgs::Twist velocity;
     // Stopping and starting the timer causes it to start counting from 0 again.
     // As long as this is called before the kill switch timer reaches kill_switch_timeout seconds
-    // the rover's kill switch wont be called.
+    // the rover_refs's kill switch wont be called.
     killSwitchTimer.stop();
     killSwitchTimer.start();
 
@@ -196,6 +223,61 @@ void setVelocity(double linearVel, double angularVel)
 /***********************
  * ROS CALLBACK HANDLERS
  ************************/
+void headingHandler(const nav_msgs::Odometry::ConstPtr &message){
+    /*
+     * Differentiate between rovers
+     */
+    if (rover_name == "achilles"){
+        rover_refs.name = ACHILLES;
+    }
+    else if (rover_name == "aeneas"){
+        rover_refs.name = AENEAS;
+    }
+    else if (rover_name == "ajax"){
+        rover_refs.name = AJAX;
+    }
+
+    char buf[256];
+    std_msgs::String curr_pose;
+    std_msgs::String global_avg_heading;
+    std_msgs::String local_avg_heading;
+    std::vector<double> thetaG;
+    double gAH;
+    double curr_x = message->pose.pose.position.x;
+    double curr_y = message->pose.pose.position.y;
+
+    /*
+     * Get theta rotation by converting quaternion orientation to pitch/roll/yaw
+     */
+    tf::Quaternion q(message->pose.pose.orientation.x, message->pose.pose.orientation.y,
+                     message->pose.pose.orientation.z, message->pose.pose.orientation.w);
+    tf::Matrix3x3 m(q);
+    double roll, pitch, yaw;
+    m.getRPY(roll, pitch, yaw);
+    snprintf(buf, 256, "Rover name: %s, x: %lf, y: %lf, theta: %lf",
+             rover_name.c_str(), curr_x, curr_y, yaw);
+
+    rover_refs.current_pose.x = curr_x;
+    rover_refs.current_pose.y = curr_y;
+    rover_refs.current_pose.theta = yaw;
+    curr_pose.data = string(buf);
+    currentPose.publish(curr_pose);
+    // Place in rover data in 'swarm'
+    swarm.at(rover_refs.name) = rover_refs;
+
+    /*
+     * Dynamically average global heading
+     * NOTE: independent of the number of rovers
+     */
+    for (std::vector<ROVER_REFS>::iterator iter = swarm.begin(); iter != swarm.end(); ++iter){
+        thetaG.at(0) += std::cos(rover_refs.current_pose.theta);
+        thetaG.at(1) += std::sin(rover_refs.current_pose.theta);
+    }
+    for (int i = 0; i < thetaG.size(); i++){
+        thetaG.at(i) /= swarm.size();
+    }
+}
+
 void targetHandler(const shared_messages::TagsImage::ConstPtr &message) {
     // Only used if we want to take action after seeing an April Tag.
 }
@@ -260,14 +342,14 @@ void publishStatusTimerEventHandler(const ros::TimerEvent &)
     status_publisher.publish(msg);
 }
 
-// Safety precaution. No movement commands - might have lost contact with ROS. Stop the rover.
-// Also might no longer be receiving manual movement commands so stop the rover.
+// Safety precaution. No movement commands - might have lost contact with ROS. Stop the rover_refs.
+// Also might no longer be receiving manual movement commands so stop the rover_refs.
 void killSwitchTimerEventHandler(const ros::TimerEvent &t)
 {
-    // No movement commands for killSwitchTime seconds so stop the rover
+    // No movement commands for killSwitchTime seconds so stop the rover_refs
     setVelocity(0.0, 0.0);
     double current_time = ros::Time::now().toSec();
-    ROS_INFO("In mobility.cpp:: killSwitchTimerEventHander(): Movement input timeout. Stopping the rover at %6.4f.",
+    ROS_INFO("In mobility.cpp:: killSwitchTimerEventHander(): Movement input timeout. Stopping the rover_refs at %6.4f.",
              current_time);
 }
 
