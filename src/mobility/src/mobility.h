@@ -73,7 +73,10 @@ void messageHandler(const std_msgs::String::ConstPtr &message);
  */
 void headingHandler(const nav_msgs::Odometry::ConstPtr &message);
 
-
-
+/*
+ * Helper Functions
+ */
+std_msgs::String roverPose (const nav_msgs::Odometry::ConstPtr &message);
+std_msgs::String globalHeading ();
 
 #endif //PROJECT_MOBILITY_H

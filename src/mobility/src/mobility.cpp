@@ -183,56 +183,18 @@ void headingHandler(const nav_msgs::Odometry::ConstPtr &message){
     else if (rover_name == "ajax"){
         rover_refs.name = AJAX;
     }
-
-    char buf[256];
-    std_msgs::String curr_pose;
-    std_msgs::String global_avg_heading;
-    std_msgs::String local_avg_heading;
-    std::vector<double> thetaG(2);
-    double gAH;
-    double curr_x = message->pose.pose.position.x;
-    double curr_y = message->pose.pose.position.y;
-
-    /*
-     * Get theta rotation by converting quaternion orientation to pitch/roll/yaw
-     */
-    tf::Quaternion q(message->pose.pose.orientation.x, message->pose.pose.orientation.y,
-                     message->pose.pose.orientation.z, message->pose.pose.orientation.w);
-    tf::Matrix3x3 m(q);
-    double roll, pitch, yaw;
-    m.getRPY(roll, pitch, yaw);
-    snprintf(buf, 256, "Rover name: %s, x: %lf, y: %lf, theta: %lf",
-             rover_name.c_str(), curr_x, curr_y, yaw);
-    rover_refs.current_pose.x = curr_x;
-    rover_refs.current_pose.y = curr_y;
-    rover_refs.current_pose.theta = yaw;
-
-    curr_pose.data = string(buf);
+    std_msgs::String curr_pose = roverPose(message);
     currentPose.publish(curr_pose);
     // Place in rover data in 'swarm'
     swarm.at(rover_refs.name) = rover_refs;
-    memset(&buf[0], 0, sizeof(buf)); // clear buffer
 
-    /*
-     * Dynamically average global heading
-     * NOTE: independent of the number of rovers
-     */
-    for (std::vector<ROVER_REFS>::iterator iter = swarm.begin(); iter != swarm.end(); ++iter){
-        thetaG.at(0) += std::cos(rover_refs.current_pose.theta);
-        thetaG.at(1) += std::sin(rover_refs.current_pose.theta);
-    }
-    for (int i = 0; i < thetaG.size(); i++){ // Will only ever be of size two since only compontents are (x, y)
-        thetaG.at(i) /= swarm.size();
-    }
-    gAH = std::atan2(thetaG.at(1), thetaG.at(0));
-    rover_refs.global_heading = gAH;
-
-    snprintf(buf, 256, "Global Heading: %lf", gAH);
-    global_avg_heading.data = string(buf);
+    std_msgs::String global_avg_heading = globalHeading();
     globalAverageHeading.publish(global_avg_heading);
     // Place update rover_refs with gAH in 'swarm'
     swarm.at(rover_refs.name) = rover_refs;
-    memset(&buf[0], 0, sizeof(buf));
+
+    std_msgs::String local_avg_heading;
+
 }
 
 void targetHandler(const shared_messages::TagsImage::ConstPtr &message) {
@@ -318,4 +280,53 @@ void sigintEventHandler(int sig)
 
 void messageHandler(const std_msgs::String::ConstPtr& message)
 {
+}
+
+std_msgs::String roverPose (const nav_msgs::Odometry::ConstPtr &message) {
+    char buf[256];
+    std_msgs::String content;
+    double curr_x = message->pose.pose.position.x;
+    double curr_y = message->pose.pose.position.y;
+
+    /*
+     * Get theta rotation by converting quaternion orientation to pitch/roll/yaw
+     */
+    tf::Quaternion q(message->pose.pose.orientation.x, message->pose.pose.orientation.y,
+                     message->pose.pose.orientation.z, message->pose.pose.orientation.w);
+    tf::Matrix3x3 m(q);
+    double roll, pitch, yaw;
+    m.getRPY(roll, pitch, yaw);
+    snprintf(buf, 256, "Rover name: %s, x: %lf, y: %lf, theta: %lf",
+             rover_name.c_str(), curr_x, curr_y, yaw);
+    rover_refs.current_pose.x = curr_x;
+    rover_refs.current_pose.y = curr_y;
+    rover_refs.current_pose.theta = yaw;
+    content.data = string(buf);
+
+    return content;
+}
+
+std_msgs::String globalHeading (){
+    char buf[256];
+    std::vector<double> thetaG(2);
+    std_msgs::String content;
+    double gAH;
+    /*
+     * Dynamically average global heading
+     * NOTE: independent of the number of rovers
+     */
+    for (std::vector<ROVER_REFS>::iterator iter = swarm.begin(); iter != swarm.end(); ++iter){
+        thetaG.at(0) += std::cos(rover_refs.current_pose.theta);
+        thetaG.at(1) += std::sin(rover_refs.current_pose.theta);
+    }
+    for (int i = 0; i < thetaG.size(); i++){ // Will only ever be of size two since only compontents are (x, y)
+        thetaG.at(i) /= swarm.size();
+    }
+    gAH = std::atan2(thetaG.at(1), thetaG.at(0));
+    rover_refs.global_heading = gAH;
+
+    snprintf(buf, 256, "Global Heading: %lf", gAH);
+    content.data = string(buf);
+
+    return content;
 }
