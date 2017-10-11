@@ -38,7 +38,7 @@ random_numbers::RandomNumberGenerator *rng;
  */
 //ROVER_REFS rover_refs;
 //std::vector<ROVER_REFS> swarm(NUM_ROVERS)
-Swarm swarm;
+Swarm swarm(NUM_ROVERS);
 AGENT_REFS agent;
 
 string rover_name;
@@ -271,21 +271,21 @@ void headingHandler(const nav_msgs::Odometry::ConstPtr &message) {
     std_msgs::String curr_pose = roverPose(message);
     currentPose.publish(curr_pose);
     // Place in rovers data in 'swarm'
-    swarm.swarm_vector[agent.name] = agent;
+//    swarm.vec[agent.name] = agent;
 //    swarm[rovers.agent_refs.name] = rovers;
 //    std::cout << "Rover name: " << rovers.agent_refs.name << std::endl;
 //    std::cout << "Swarm rovers: " << swarm[rovers.agent_refs.name].agent_refs.name << std::endl;
 //    std::cout << "Rover heading: " << rovers.agent_refs.current_pose.theta << std::endl;
 //    std::cout << "Swarm rovers heading: " << swarm[rovers.agent_refs.name].agent_refs.current_pose.theta << std::endl;
     std::cout << "Rover name: " << agent.name << std::endl;
-    std::cout << "Swarm rovers: " << swarm.swarm_vector[agent.name].name << std::endl;
+//    std::cout << "Swarm rovers: " << swarm.swarm_vector[agent.name].name << std::endl;
     std::cout << "Rover heading: " << agent.current_pose.theta << std::endl;
-    std::cout << "Swarm rovers heading: " << swarm.swarm_vector[agent.name].current_pose.theta << std::endl;
-    std_msgs::String global_avg_heading = globalHeading();
-    globalAverageHeading.publish(global_avg_heading);
+//    std::cout << "Swarm rovers heading: " << swarm.swarm_vector[agent.name].current_pose.theta << std::endl;
+//    std_msgs::String global_avg_heading = globalHeading();
+//    globalAverageHeading.publish(global_avg_heading);
     // Place update swarm_vector with gAH in 'swarm'
 //    swarm[rovers.agent_refs.name] = rovers;
-    swarm.swarm_vector[agent.name] = agent;
+//    swarm.swarm_vector[agent.name] = agent;
 //    std::cout << "Rover gAH: " << rovers.agent_refs.global_heading << std::endl;
 //    std::cout << "Swarm gAH: " << swarm[rovers.agent_refs.name].agent_refs.global_heading << std::endl;
 }
@@ -306,35 +306,35 @@ std_msgs::String roverPose (const nav_msgs::Odometry::ConstPtr &message) {
     m.getRPY(roll, pitch, yaw);
     snprintf(buf, 256, "Rover name: %s, x: %lf, y: %lf, theta: %lf",
              rover_name.c_str(), curr_x, curr_y, yaw);
-//    rover_refs.current_pose.x = curr_x;
-//    rover_refs.current_pose.y = curr_y;
-//    rover_refs.current_pose.theta = yaw;
+    agent.current_pose.x = curr_x;
+    agent.current_pose.y = curr_y;
+    agent.current_pose.theta = yaw;
     content.data = string(buf);
 
     return content;
 }
-
-std_msgs::String globalHeading (){
-    char buf[256];
-    std::vector<double> thetaG(2);
-    std_msgs::String content;
-    double gAH;
-    /*
-     * Dynamically average global heading
-     * NOTE: independent of the number of rovers
-     */
-//    for (std::vector<ROVER_REFS>::iterator iter = swarm.begin(); iter != swarm.end(); ++iter){
-//        thetaG.at(0) += std::cos(rover_refs.current_pose.theta);
-//        thetaG.at(1) += std::sin(rover_refs.current_pose.theta);
-//    }
-//    for (int i = 0; i < thetaG.size(); i++){ // Will only ever be of size two since only compontents are (x, y)
-//        thetaG.at(i) /= swarm.size();
-//    }
-//    gAH = std::atan2(thetaG.at(1), thetaG.at(0));
-//    rover_refs.global_heading = gAH;
-
-    snprintf(buf, 256, "Global Heading: %lf", gAH);
-    content.data = string(buf);
-
-    return content;
-}
+//
+//std_msgs::String globalHeading (){
+//    char buf[256];
+//    std::vector<double> thetaG(2);
+//    std_msgs::String content;
+//    double gAH;
+//    /*
+//     * Dynamically average global heading
+//     * NOTE: independent of the number of rovers
+//     */
+////    for (std::vector<ROVER_REFS>::iterator iter = swarm.begin(); iter != swarm.end(); ++iter){
+////        thetaG.at(0) += std::cos(rover_refs.current_pose.theta);
+////        thetaG.at(1) += std::sin(rover_refs.current_pose.theta);
+////    }
+////    for (int i = 0; i < thetaG.size(); i++){ // Will only ever be of size two since only compontents are (x, y)
+////        thetaG.at(i) /= swarm.size();
+////    }
+////    gAH = std::atan2(thetaG.at(1), thetaG.at(0));
+////    rover_refs.global_heading = gAH;
+//
+//    snprintf(buf, 256, "Global Heading: %lf", gAH);
+//    content.data = string(buf);
+//
+//    return content;
+//}

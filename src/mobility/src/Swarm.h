@@ -25,8 +25,12 @@ typedef struct agent_refs {
 
 class Swarm {
     public:
-        std::vector<AGENT_REFS> swarm_vector;
+        Swarm (int capacity) : vec(capacity) {}
+    int size;
+    std::vector<AGENT_REFS> vec;
 //        AGENT_REFS agent_refs;
+
+
 };
 
 #endif //PROJECT_ROVERATTR_H
