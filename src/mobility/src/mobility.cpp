@@ -156,7 +156,7 @@ int main(int argc, char **argv)
     /*
      * Added advertisers instatiation
      */
-    currentPose = mNH.advertise<std_msgs::String>((rover_name + "/heading"), 10, true);
+    currentPose = mNH.advertise<std_msgs::String>((rover_name + "/current_pose"), 10, true);
     globalAverageHeading = mNH.advertise<std_msgs::String>((rover_name + "/global_heading"), 10, true);
     localAverageHeading = mNH.advertise<std_msgs::String>((rover_name + "/local_heading"), 10, true);
     
@@ -238,6 +238,7 @@ void headingHandler(const nav_msgs::Odometry::ConstPtr &message){
     }
 
     char buf[256];
+    char temp[256];
     std_msgs::String curr_pose;
     std_msgs::String global_avg_heading;
     std_msgs::String local_avg_heading;
@@ -256,7 +257,6 @@ void headingHandler(const nav_msgs::Odometry::ConstPtr &message){
     m.getRPY(roll, pitch, yaw);
     snprintf(buf, 256, "Rover name: %s, x: %lf, y: %lf, theta: %lf",
              rover_name.c_str(), curr_x, curr_y, yaw);
-
     rover_refs.current_pose.x = curr_x;
     rover_refs.current_pose.y = curr_y;
     rover_refs.current_pose.theta = yaw;
@@ -264,6 +264,7 @@ void headingHandler(const nav_msgs::Odometry::ConstPtr &message){
     currentPose.publish(curr_pose);
     // Place in rover data in 'swarm'
     swarm.at(rover_refs.name) = rover_refs;
+//    memset(&buf[0], 0, sizeof(buf)); // clear buffer
 
     /*
      * Dynamically average global heading
@@ -273,9 +274,16 @@ void headingHandler(const nav_msgs::Odometry::ConstPtr &message){
         thetaG.at(0) += std::cos(rover_refs.current_pose.theta);
         thetaG.at(1) += std::sin(rover_refs.current_pose.theta);
     }
-    for (int i = 0; i < thetaG.size(); i++){
+    for (int i = 0; i < thetaG.size(); i++){ // Will only ever be of size two since only compontents are (x, y)
         thetaG.at(i) /= swarm.size();
     }
+    gAH = std::atan2(thetaG.at(1), thetaG.at(0));
+    snprintf(temp, 256, "Global Heading: %lf", gAH);
+    rover_refs.global_heading = gAH;
+    global_avg_heading.data = string(temp);
+    globalAverageHeading.publish(global_avg_heading);
+    // Place update rover_refs with gAH in 'swarm'
+    swarm.at(rover_refs.name) = rover_refs;
 }
 
 void targetHandler(const shared_messages::TagsImage::ConstPtr &message) {
