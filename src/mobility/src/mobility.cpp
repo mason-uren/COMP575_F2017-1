@@ -26,6 +26,7 @@
 #include <signal.h>
 #include <math.h>
 #include "mobility.h"
+#include "Swarm.h"
 
 using namespace std;
 
@@ -35,8 +36,10 @@ random_numbers::RandomNumberGenerator *rng;
 /*
  * ROVER_REFS
  */
-ROVER_REFS rover_refs;
-std::vector<ROVER_REFS> swarm(NUM_ROVERS);
+//ROVER_REFS rover_refs;
+//std::vector<ROVER_REFS> swarm(NUM_ROVERS)
+Swarm swarm;
+AGENT_REFS agent;
 
 string rover_name;
 char host[128];
@@ -170,33 +173,6 @@ void setVelocity(double linearVel, double angularVel)
 /***********************
  * ROS CALLBACK HANDLERS
  ************************/
-void headingHandler(const nav_msgs::Odometry::ConstPtr &message){
-    /*
-     * Differentiate between rovers
-     */
-    if (rover_name == "achilles"){
-        rover_refs.name = ACHILLES;
-    }
-    else if (rover_name == "aeneas"){
-        rover_refs.name = AENEAS;
-    }
-    else if (rover_name == "ajax"){
-        rover_refs.name = AJAX;
-    }
-    std_msgs::String curr_pose = roverPose(message);
-    currentPose.publish(curr_pose);
-    // Place in rover data in 'swarm'
-    swarm.at(rover_refs.name) = rover_refs;
-
-    std_msgs::String global_avg_heading = globalHeading();
-    globalAverageHeading.publish(global_avg_heading);
-    // Place update rover_refs with gAH in 'swarm'
-    swarm.at(rover_refs.name) = rover_refs;
-
-    std_msgs::String local_avg_heading;
-
-}
-
 void targetHandler(const shared_messages::TagsImage::ConstPtr &message) {
     // Only used if we want to take action after seeing an April Tag.
 }
@@ -281,6 +257,38 @@ void sigintEventHandler(int sig)
 void messageHandler(const std_msgs::String::ConstPtr& message)
 {
 }
+void headingHandler(const nav_msgs::Odometry::ConstPtr &message) {
+    if (rover_name == "achilles") {
+        agent.name = ACHILLES;
+//        rovers.agent_refs.name = ACHILLES;
+    } else if (rover_name == "aeneas") {
+        agent.name = AENEAS;
+//        rovers.agent_refs.name = AENEAS;
+    } else if (rover_name == "ajax") {
+        agent.name = AJAX;
+//        rovers.agent_refs.name = AJAX;
+    }
+    std_msgs::String curr_pose = roverPose(message);
+    currentPose.publish(curr_pose);
+    // Place in rovers data in 'swarm'
+    swarm.swarm_vector[agent.name] = agent;
+//    swarm[rovers.agent_refs.name] = rovers;
+//    std::cout << "Rover name: " << rovers.agent_refs.name << std::endl;
+//    std::cout << "Swarm rovers: " << swarm[rovers.agent_refs.name].agent_refs.name << std::endl;
+//    std::cout << "Rover heading: " << rovers.agent_refs.current_pose.theta << std::endl;
+//    std::cout << "Swarm rovers heading: " << swarm[rovers.agent_refs.name].agent_refs.current_pose.theta << std::endl;
+    std::cout << "Rover name: " << agent.name << std::endl;
+    std::cout << "Swarm rovers: " << swarm.swarm_vector[agent.name].name << std::endl;
+    std::cout << "Rover heading: " << agent.current_pose.theta << std::endl;
+    std::cout << "Swarm rovers heading: " << swarm.swarm_vector[agent.name].current_pose.theta << std::endl;
+    std_msgs::String global_avg_heading = globalHeading();
+    globalAverageHeading.publish(global_avg_heading);
+    // Place update swarm_vector with gAH in 'swarm'
+//    swarm[rovers.agent_refs.name] = rovers;
+    swarm.swarm_vector[agent.name] = agent;
+//    std::cout << "Rover gAH: " << rovers.agent_refs.global_heading << std::endl;
+//    std::cout << "Swarm gAH: " << swarm[rovers.agent_refs.name].agent_refs.global_heading << std::endl;
+}
 
 std_msgs::String roverPose (const nav_msgs::Odometry::ConstPtr &message) {
     char buf[256];
@@ -298,9 +306,9 @@ std_msgs::String roverPose (const nav_msgs::Odometry::ConstPtr &message) {
     m.getRPY(roll, pitch, yaw);
     snprintf(buf, 256, "Rover name: %s, x: %lf, y: %lf, theta: %lf",
              rover_name.c_str(), curr_x, curr_y, yaw);
-    rover_refs.current_pose.x = curr_x;
-    rover_refs.current_pose.y = curr_y;
-    rover_refs.current_pose.theta = yaw;
+//    rover_refs.current_pose.x = curr_x;
+//    rover_refs.current_pose.y = curr_y;
+//    rover_refs.current_pose.theta = yaw;
     content.data = string(buf);
 
     return content;
@@ -315,15 +323,15 @@ std_msgs::String globalHeading (){
      * Dynamically average global heading
      * NOTE: independent of the number of rovers
      */
-    for (std::vector<ROVER_REFS>::iterator iter = swarm.begin(); iter != swarm.end(); ++iter){
-        thetaG.at(0) += std::cos(rover_refs.current_pose.theta);
-        thetaG.at(1) += std::sin(rover_refs.current_pose.theta);
-    }
-    for (int i = 0; i < thetaG.size(); i++){ // Will only ever be of size two since only compontents are (x, y)
-        thetaG.at(i) /= swarm.size();
-    }
-    gAH = std::atan2(thetaG.at(1), thetaG.at(0));
-    rover_refs.global_heading = gAH;
+//    for (std::vector<ROVER_REFS>::iterator iter = swarm.begin(); iter != swarm.end(); ++iter){
+//        thetaG.at(0) += std::cos(rover_refs.current_pose.theta);
+//        thetaG.at(1) += std::sin(rover_refs.current_pose.theta);
+//    }
+//    for (int i = 0; i < thetaG.size(); i++){ // Will only ever be of size two since only compontents are (x, y)
+//        thetaG.at(i) /= swarm.size();
+//    }
+//    gAH = std::atan2(thetaG.at(1), thetaG.at(0));
+//    rover_refs.global_heading = gAH;
 
     snprintf(buf, 256, "Global Heading: %lf", gAH);
     content.data = string(buf);
