@@ -24,9 +24,8 @@
 // To handle shutdown signals so the node quits properly in response to "rosnode kill"
 
 #include <signal.h>
-//#include <math.h>
+#include <math.h>
 #include "mobility.h"
-#include "RoverAttr.h"
 
 using namespace std;
 
@@ -36,10 +35,8 @@ random_numbers::RandomNumberGenerator *rng;
 /*
  * ROVER_REFS
  */
-//ROVER_REFS rover_refs;
-//std::vector<ROVER_REFS> swarm(NUM_ROVERS);
-RoverAttr rover;
-std::vector<RoverAttr> swarm(NUM_ROVERS);
+ROVER_REFS rover_refs;
+std::vector<ROVER_REFS> swarm(NUM_ROVERS);
 
 string rover_name;
 char host[128];
@@ -178,42 +175,23 @@ void headingHandler(const nav_msgs::Odometry::ConstPtr &message){
      * Differentiate between rovers
      */
     if (rover_name == "achilles"){
-        rover.agent_refs.name = ACHILLES;
-//        rover_refs.name = ACHILLES;
+        rover_refs.name = ACHILLES;
     }
     else if (rover_name == "aeneas"){
-        rover.agent_refs.name = AENEAS;
-//        rover_refs.name = AENEAS;
+        rover_refs.name = AENEAS;
     }
     else if (rover_name == "ajax"){
-        rover.agent_refs.name = AJAX;
-//        rover_refs.name = AJAX;
+        rover_refs.name = AJAX;
     }
     std_msgs::String curr_pose = roverPose(message);
     currentPose.publish(curr_pose);
     // Place in rover data in 'swarm'
-    swarm[rover.agent_refs.name] = rover;
-//    swarm[rover_refs.name] = rover_refs;
-//    std::cout << "Rover name: " << rover_refs.name << std::endl;
-//    std::cout << "RoverAttr rover: " << swarm.data()->name << std::endl;
-//    std::cout << "Rover heading: " << rover_refs.current_pose.theta << std::endl;
-//    std::cout << "RoverAttr rover heading: " << swarm.data()->current_pose.theta << std::endl;
-    std::cout << "Rover name: " << rover.agent_refs.name << std::endl;
-    std::cout << "RoverAttr rover: " << swarm.data()->agent_refs.name << std::endl;
-    std::cout << "Rover heading: " << rover.agent_refs.current_pose.theta << std::endl;
-    std::cout << "RoverAttr rover heading: " << swarm.data()->agent_refs.current_pose.theta << std::endl;
-
+    swarm.at(rover_refs.name) = rover_refs;
 
     std_msgs::String global_avg_heading = globalHeading();
     globalAverageHeading.publish(global_avg_heading);
     // Place update rover_refs with gAH in 'swarm'
-    swarm[rover.agent_refs.name] = rover;
-//    swarm[rover_refs.name] = rover_refs;
-
-//    std::cout << "Rover gAH: " << rover_refs.global_heading << std::endl;
-//    std::cout << "RoverAttr gAH: " << swarm.data()->global_heading << std::endl;
-    std::cout << "Rover gAH: " << rover.agent_refs.global_heading << std::endl;
-    std::cout << "RoverAttr gAH: " << swarm.data()->agent_refs.global_heading << std::endl;
+    swarm.at(rover_refs.name) = rover_refs;
 
     std_msgs::String local_avg_heading;
 
@@ -320,12 +298,9 @@ std_msgs::String roverPose (const nav_msgs::Odometry::ConstPtr &message) {
     m.getRPY(roll, pitch, yaw);
     snprintf(buf, 256, "Rover name: %s, x: %lf, y: %lf, theta: %lf",
              rover_name.c_str(), curr_x, curr_y, yaw);
-//    rover_refs.current_pose.x = curr_x;
-//    rover_refs.current_pose.y = curr_y;
-//    rover_refs.current_pose.theta = yaw;
-    rover.agent_refs.current_pose.x = curr_x;
-    rover.agent_refs.current_pose.y = curr_y;
-    rover.agent_refs.current_pose.theta = yaw;
+    rover_refs.current_pose.x = curr_x;
+    rover_refs.current_pose.y = curr_y;
+    rover_refs.current_pose.theta = yaw;
     content.data = string(buf);
 
     return content;
@@ -340,20 +315,15 @@ std_msgs::String globalHeading (){
      * Dynamically average global heading
      * NOTE: independent of the number of rovers
      */
-//    for (std::vector<ROVER_REFS>::iterator iter = swarm.begin(); iter != swarm.end(); ++iter){
-//        thetaG.at(0) += std::cos(rover_refs.current_pose.theta); // xPart
-//        thetaG.at(1) += std::sin(rover_refs.current_pose.theta); // yPart
-//    }
-    for (std::vector<RoverAttr>::iterator iter = swarm.begin(); iter != swarm.end(); ++iter){
-        thetaG.at(0) += std::cos(rover.agent_refs.current_pose.theta); // xPart
-        thetaG.at(1) += std::sin(rover.agent_refs.current_pose.theta); // yPart
+    for (std::vector<ROVER_REFS>::iterator iter = swarm.begin(); iter != swarm.end(); ++iter){
+        thetaG.at(0) += std::cos(rover_refs.current_pose.theta);
+        thetaG.at(1) += std::sin(rover_refs.current_pose.theta);
     }
     for (int i = 0; i < thetaG.size(); i++){ // Will only ever be of size two since only compontents are (x, y)
         thetaG.at(i) /= swarm.size();
     }
     gAH = std::atan2(thetaG.at(1), thetaG.at(0));
-    rover.agent_refs.global_heading = gAH;
-//    rover_refs.global_heading = gAH;
+    rover_refs.global_heading = gAH;
 
     snprintf(buf, 256, "Global Heading: %lf", gAH);
     content.data = string(buf);
