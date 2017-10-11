@@ -5,4 +5,4 @@ devel
 src/rqt_rover_gui/CMakeLists.txt.user*
 *.swp
 cmake-build-debug
-
+.idea
