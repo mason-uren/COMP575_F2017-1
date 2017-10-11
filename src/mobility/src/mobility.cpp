@@ -36,7 +36,7 @@ random_numbers::RandomNumberGenerator *rng;
  * ROVER_REFS
  */
 ROVER_REFS rover_refs;
-std::vector<ROVER_REFS> swarm;
+std::vector<ROVER_REFS> swarm(3);
 
 string rover_name;
 char host[128];
@@ -156,7 +156,7 @@ int main(int argc, char **argv)
     /*
      * Added advertisers instatiation
      */
-    currentPose = mNH.advertise<std_msgs::String>((rover_name + "/current_pose"), 10, true);
+    currentPose = mNH.advertise<std_msgs::String>((rover_name + "/heading"), 10, true);
     globalAverageHeading = mNH.advertise<std_msgs::String>((rover_name + "/global_heading"), 10, true);
     localAverageHeading = mNH.advertise<std_msgs::String>((rover_name + "/local_heading"), 10, true);
     
@@ -242,7 +242,7 @@ void headingHandler(const nav_msgs::Odometry::ConstPtr &message){
     std_msgs::String curr_pose;
     std_msgs::String global_avg_heading;
     std_msgs::String local_avg_heading;
-    std::vector<double> thetaG;
+    std::vector<double> thetaG(2);
     double gAH;
     double curr_x = message->pose.pose.position.x;
     double curr_y = message->pose.pose.position.y;
@@ -264,7 +264,7 @@ void headingHandler(const nav_msgs::Odometry::ConstPtr &message){
     currentPose.publish(curr_pose);
     // Place in rover data in 'swarm'
     swarm.at(rover_refs.name) = rover_refs;
-//    memset(&buf[0], 0, sizeof(buf)); // clear buffer
+    memset(&buf[0], 0, sizeof(buf)); // clear buffer
 
     /*
      * Dynamically average global heading
@@ -282,7 +282,7 @@ void headingHandler(const nav_msgs::Odometry::ConstPtr &message){
     rover_refs.global_heading = gAH;
     global_avg_heading.data = string(temp);
     globalAverageHeading.publish(global_avg_heading);
-    // Place update rover_refs with gAH in 'swarm'
+//    // Place update rover_refs with gAH in 'swarm'
     swarm.at(rover_refs.name) = rover_refs;
 }
 
