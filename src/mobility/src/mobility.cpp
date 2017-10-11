@@ -36,7 +36,7 @@ random_numbers::RandomNumberGenerator *rng;
  * ROVER_REFS
  */
 ROVER_REFS rover_refs;
-std::vector<ROVER_REFS> swarm(3);
+std::vector<ROVER_REFS> swarm(NUM_ROVERS);
 
 string rover_name;
 char host[128];
@@ -55,59 +55,6 @@ double time_stamp_transition_to_auto = 0.0;
 // state machine states
 #define STATE_MACHINE_TRANSLATE 0
 int state_machine_state = STATE_MACHINE_TRANSLATE;
-
-//Publishers
-ros::Publisher velocityPublish;
-ros::Publisher stateMachinePublish;
-ros::Publisher status_publisher;
-ros::Publisher target_collected_publisher;
-ros::Publisher angular_publisher;
-ros::Publisher messagePublish;
-ros::Publisher debug_publisher;
-/*
- * Added Publishers
- */
-ros::Publisher currentPose;
-ros::Publisher globalAverageHeading;
-ros::Publisher localAverageHeading;
-
-//Subscribers
-ros::Subscriber joySubscriber;
-ros::Subscriber modeSubscriber;
-ros::Subscriber targetSubscriber;
-ros::Subscriber obstacleSubscriber;
-ros::Subscriber odometrySubscriber;
-ros::Subscriber messageSubscriber;
-/*
- * Added subscibers
- */
-ros::Subscriber headingSubscriber;
-
-//Timers
-ros::Timer stateMachineTimer;
-ros::Timer publish_status_timer;
-ros::Timer killSwitchTimer;
-
-// Mobility Logic Functions
-void setVelocity(double linearVel, double angularVel);
-
-// OS Signal Handler
-void sigintEventHandler(int signal);
-
-// Callback handlers
-void joyCmdHandler(const geometry_msgs::Twist::ConstPtr &message);
-void modeHandler(const std_msgs::UInt8::ConstPtr &message);
-void targetHandler(const shared_messages::TagsImage::ConstPtr &tagInfo);
-void obstacleHandler(const std_msgs::UInt8::ConstPtr &message); // 
-void odometryHandler(const nav_msgs::Odometry::ConstPtr &message);
-void mobilityStateMachine(const ros::TimerEvent &);
-void publishStatusTimerEventHandler(const ros::TimerEvent &event);
-void killSwitchTimerEventHandler(const ros::TimerEvent &event);
-void messageHandler(const std_msgs::String::ConstPtr &message);
-/*
- * Added Handlers
- */
-void headingHandler(const nav_msgs::Odometry::ConstPtr &message);
 
 int main(int argc, char **argv)
 {
@@ -238,7 +185,6 @@ void headingHandler(const nav_msgs::Odometry::ConstPtr &message){
     }
 
     char buf[256];
-    char temp[256];
     std_msgs::String curr_pose;
     std_msgs::String global_avg_heading;
     std_msgs::String local_avg_heading;
@@ -260,6 +206,7 @@ void headingHandler(const nav_msgs::Odometry::ConstPtr &message){
     rover_refs.current_pose.x = curr_x;
     rover_refs.current_pose.y = curr_y;
     rover_refs.current_pose.theta = yaw;
+
     curr_pose.data = string(buf);
     currentPose.publish(curr_pose);
     // Place in rover data in 'swarm'
@@ -278,12 +225,14 @@ void headingHandler(const nav_msgs::Odometry::ConstPtr &message){
         thetaG.at(i) /= swarm.size();
     }
     gAH = std::atan2(thetaG.at(1), thetaG.at(0));
-    snprintf(temp, 256, "Global Heading: %lf", gAH);
     rover_refs.global_heading = gAH;
-    global_avg_heading.data = string(temp);
+
+    snprintf(buf, 256, "Global Heading: %lf", gAH);
+    global_avg_heading.data = string(buf);
     globalAverageHeading.publish(global_avg_heading);
-//    // Place update rover_refs with gAH in 'swarm'
+    // Place update rover_refs with gAH in 'swarm'
     swarm.at(rover_refs.name) = rover_refs;
+    memset(&buf[0], 0, sizeof(buf));
 }
 
 void targetHandler(const shared_messages::TagsImage::ConstPtr &message) {
