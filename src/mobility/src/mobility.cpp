@@ -26,20 +26,13 @@
 #include <signal.h>
 #include <math.h>
 #include "mobility.h"
-#include "Swarm.h"
+
 
 using namespace std;
 
 // Random number generator
 random_numbers::RandomNumberGenerator *rng;
 
-/*
- * ROVER_REFS
- */
-//ROVER_REFS rover_refs;
-//std::vector<ROVER_REFS> swarm(NUM_ROVERS)
-Swarm swarm(NUM_ROVERS);
-AGENT_REFS agent;
 
 string rover_name;
 char host[128];
@@ -276,7 +269,6 @@ void headingHandler(const nav_msgs::Odometry::ConstPtr &message) {
     std_msgs::String global_avg_heading = globalHeading();
     globalAverageHeading.publish(global_avg_heading);
     // Place update swarm_vector with gAH in 'swarm'
-//    swarm[rovers.agent_refs.name] = rovers;
     swarm.vec[agent.name] = agent;
 //    std::cout << "Rover gAH: " << rovers.agent_refs.global_heading << std::endl;
 //    std::cout << "Swarm gAH: " << swarm[rovers.agent_refs.name].agent_refs.global_heading << std::endl;

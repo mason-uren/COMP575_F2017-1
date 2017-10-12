@@ -6,19 +6,14 @@
 #define PROJECT_MOBILITY_H
 
 #include <geometry_msgs/Pose2D.h>
+#include "Swarm.h"
 
+/*
+ * ROVER_REFS
+ */
+Swarm swarm(NUM_ROVERS);
+AGENT_REFS agent;
 
-//// achilles, aeneas, ajax <-- *** CORRECTLY SPELLED NAMES ***
-//typedef enum {
-//    ACHILLES = 0, AENEAS, AJAX
-//} AGENT_NAME;
-//
-//
-//typedef struct agent_refs {
-//    AGENT_NAME name;
-//    geometry_msgs::Pose2D current_pose;
-//    double global_heading;
-//} AGENT_REFS;
 
 // Mobility Logic Functions
 void setVelocity(double linearVel, double angularVel);
