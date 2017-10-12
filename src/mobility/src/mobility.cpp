@@ -260,32 +260,24 @@ void messageHandler(const std_msgs::String::ConstPtr& message)
 void headingHandler(const nav_msgs::Odometry::ConstPtr &message) {
     if (rover_name == "achilles") {
         agent.name = ACHILLES;
-//        rovers.agent_refs.name = ACHILLES;
     } else if (rover_name == "aeneas") {
         agent.name = AENEAS;
-//        rovers.agent_refs.name = AENEAS;
     } else if (rover_name == "ajax") {
         agent.name = AJAX;
-//        rovers.agent_refs.name = AJAX;
     }
     std_msgs::String curr_pose = roverPose(message);
     currentPose.publish(curr_pose);
     // Place in rovers data in 'swarm'
-//    swarm.vec[agent.name] = agent;
-//    swarm[rovers.agent_refs.name] = rovers;
-//    std::cout << "Rover name: " << rovers.agent_refs.name << std::endl;
-//    std::cout << "Swarm rovers: " << swarm[rovers.agent_refs.name].agent_refs.name << std::endl;
-//    std::cout << "Rover heading: " << rovers.agent_refs.current_pose.theta << std::endl;
-//    std::cout << "Swarm rovers heading: " << swarm[rovers.agent_refs.name].agent_refs.current_pose.theta << std::endl;
+    swarm.vec[agent.name] = agent;
     std::cout << "Rover name: " << agent.name << std::endl;
-//    std::cout << "Swarm rovers: " << swarm.swarm_vector[agent.name].name << std::endl;
+    std::cout << "Swarm rovers: " << swarm.vec[agent.name].name << std::endl;
     std::cout << "Rover heading: " << agent.current_pose.theta << std::endl;
-//    std::cout << "Swarm rovers heading: " << swarm.swarm_vector[agent.name].current_pose.theta << std::endl;
-//    std_msgs::String global_avg_heading = globalHeading();
-//    globalAverageHeading.publish(global_avg_heading);
+    std::cout << "Swarm rovers heading: " << swarm.vec[agent.name].current_pose.theta << std::endl;
+    std_msgs::String global_avg_heading = globalHeading();
+    globalAverageHeading.publish(global_avg_heading);
     // Place update swarm_vector with gAH in 'swarm'
 //    swarm[rovers.agent_refs.name] = rovers;
-//    swarm.swarm_vector[agent.name] = agent;
+    swarm.vec[agent.name] = agent;
 //    std::cout << "Rover gAH: " << rovers.agent_refs.global_heading << std::endl;
 //    std::cout << "Swarm gAH: " << swarm[rovers.agent_refs.name].agent_refs.global_heading << std::endl;
 }
@@ -313,28 +305,29 @@ std_msgs::String roverPose (const nav_msgs::Odometry::ConstPtr &message) {
 
     return content;
 }
-//
-//std_msgs::String globalHeading (){
-//    char buf[256];
-//    std::vector<double> thetaG(2);
-//    std_msgs::String content;
-//    double gAH;
-//    /*
-//     * Dynamically average global heading
-//     * NOTE: independent of the number of rovers
-//     */
-////    for (std::vector<ROVER_REFS>::iterator iter = swarm.begin(); iter != swarm.end(); ++iter){
-////        thetaG.at(0) += std::cos(rover_refs.current_pose.theta);
-////        thetaG.at(1) += std::sin(rover_refs.current_pose.theta);
-////    }
-////    for (int i = 0; i < thetaG.size(); i++){ // Will only ever be of size two since only compontents are (x, y)
-////        thetaG.at(i) /= swarm.size();
-////    }
-////    gAH = std::atan2(thetaG.at(1), thetaG.at(0));
-////    rover_refs.global_heading = gAH;
-//
-//    snprintf(buf, 256, "Global Heading: %lf", gAH);
-//    content.data = string(buf);
-//
-//    return content;
-//}
+
+std_msgs::String globalHeading (){
+    char buf[256];
+    std::vector<double> thetaG(2);
+    std_msgs::String content;
+    double gAH;
+    /*
+     * Dynamically average global heading
+     * NOTE: independent of the number of rovers
+     */
+    for (std::vector<AGENT_REFS>::iterator iter = swarm.vec.begin(); iter != swarm.vec.end(); ++iter){
+        thetaG.at(0) += std::cos(iter->current_pose.theta);
+        thetaG.at(1) += std::sin(iter->current_pose.theta);
+        std::cout << "***ITER: " << iter->current_pose.theta << std::endl;
+    }
+    for (int i = 0; i < thetaG.size(); i++){ // Will only ever be of size two since only compontents are (x, y)
+        thetaG.at(i) /= swarm.vec.size();
+    }
+    gAH = std::atan2(thetaG.at(1), thetaG.at(0));
+    agent.global_heading = gAH;
+
+    snprintf(buf, 256, "Global Heading: %lf", gAH);
+    content.data = string(buf);
+
+    return content;
+}
