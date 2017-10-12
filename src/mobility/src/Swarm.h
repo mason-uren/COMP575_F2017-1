@@ -21,15 +21,10 @@ typedef struct agent_refs {
     double global_heading;
 } AGENT_REFS;
 
-//std::vector<AGENT_REFS> swarm(NUM_ROVERS);
-
 class Swarm {
     public:
-        Swarm (int capacity) : vec(capacity) {}
+        explicit Swarm (int capacity) : vec(capacity) {}
         std::vector<AGENT_REFS> vec;
-//        AGENT_REFS agent_refs;
-
-
 };
 
 #endif //PROJECT_ROVERATTR_H

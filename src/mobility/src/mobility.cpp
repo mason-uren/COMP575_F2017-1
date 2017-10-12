@@ -320,8 +320,8 @@ std_msgs::String globalHeading (){
         thetaG.at(1) += std::sin(iter->current_pose.theta);
         std::cout << "***ITER: " << iter->current_pose.theta << std::endl;
     }
-    for (int i = 0; i < thetaG.size(); i++){ // Will only ever be of size two since only compontents are (x, y)
-        thetaG.at(i) /= swarm.vec.size();
+    for (std::vector<double>::iterator iter = thetaG.begin(); iter != thetaG.end(); ++iter){ // Will only ever be of size two since only compontents are (x, y)
+        thetaG[*iter] /= swarm.vec.size();
     }
     gAH = std::atan2(thetaG.at(1), thetaG.at(0));
     agent.global_heading = gAH;
