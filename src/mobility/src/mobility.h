@@ -83,9 +83,9 @@ typedef struct rover_pose{
     double x;
     double y;
     double theta;
-    double neighbors[];
+    std::vector<std::vector<int> > neighbors;
 } ROVER_POSE;
 
-std::map<int, ROVER_POSE> rover_hash;
+std::map<int, RoverPose> rover_hash;
 
 #endif //PROJECT_MOBILITY_H

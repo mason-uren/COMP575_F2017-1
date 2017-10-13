@@ -279,15 +279,18 @@ void headingHandler(const std_msgs::Float64MultiArray::ConstPtr &message) {
      * Create and populate hashtable
      */
 //    std::map<int, ROVER_POSE> rover_hash;
-    rover_hash[message->data[0]] = {message->data[1], message->data[2], message->data[3]};
+    static const double rD[] = {message->data[1], message->data[2], message->data[3]};
+    std::vector<double> rover_data (rD, rD + sizeof(rD) / sizeof(rD[0]));
+    RoverPose test(rover_data);
+    rover_hash[message->data[0]] = test;
+
     std::cout << "Hash map theta of Achilles: " << rover_hash[0].theta << std::endl;
     // Calc global heading of all the rovers
     std_msgs::String global_avg_heading = globalHeading();
     globalAverageHeading.publish(global_avg_heading);
 
     // Calc which rovers are neighbors
-    std::vector<int> nB = neighbors();
-
+    neighbors();
     // Calc local heading of neighbors
 
 
@@ -304,7 +307,7 @@ std_msgs::String globalHeading (){
      * Dynamically average global heading
      * NOTE: independent of the number of rovers
      */
-    for (std::map<int, ROVER_POSE>::iterator it = rover_hash.begin(); it != rover_hash.end(); ++it){
+    for (std::map<int, RoverPose>::iterator it = rover_hash.begin(); it != rover_hash.end(); ++it){
 
         thetaG[0] += std::cos(it->second.theta);
         thetaG[1] += std::sin(it->second.theta);
@@ -312,7 +315,7 @@ std_msgs::String globalHeading (){
     for (std::vector<double>::iterator it = thetaG.begin(); it != thetaG.end(); ++it){
         thetaG[*it] /= rover_hash.size();
     }
-    gAH = std::atan2(thetaG[1], thetaG[2]);
+    gAH = std::atan2(thetaG[1], thetaG[0]);
     agent.global_heading = gAH;
 
     snprintf(buf, 256, "Global Heading: %lf", gAH);
@@ -322,53 +325,58 @@ std_msgs::String globalHeading (){
 }
 
 void neighbors () {
+    for (std::map<int, RoverPose>::iterator it = rover_hash.begin(); it != rover_hash.end(); ++it){
+        it->second.neighbors.clear();
+    }
+
     ROVER_POSE rover0 = {rover_hash[0].x, rover_hash[0].y, rover_hash[0].theta};
     ROVER_POSE rover1 = {rover_hash[1].x, rover_hash[1].y, rover_hash[1].theta};
-    ROVER_POSE rover2 = {rover_hash[2].theta, rover_hash[2].y, rover_hash[2].theta};
+    ROVER_POSE rover2 = {rover_hash[2].x, rover_hash[2].y, rover_hash[2].theta};
 
     double d_01 = sqrt(pow((rover0.x - rover1.x), 2) + pow((rover0.y - rover1.y), 2));
     double d_02 = sqrt(pow((rover0.x - rover2.x), 2) + pow((rover0.y - rover2.y), 2));
     double d_12 = sqrt(pow((rover1.x - rover2.x), 2) + pow((rover1.y - rover2.y), 2));
 
     if (d_01 <= NEIGH_DIST && d_02 <= NEIGH_DIST && d_12 <= NEIGH_DIST){ // All rovers are near eachother
-        rover_hash[0].neighbors = {1,2};
-        rover_hash[1].neighbors = {0,2};
-        rover_hash[2].neighbors = {0,1};
+        rover_hash[0].neighbors.insert(rover_hash[0].neighbors.end(), {1,2});
+//        rover_hash[0].neighbors = {1,2};
+//        rover_hash[1].neighbors = {0,2};
+//        rover_hash[2].neighbors = {0,1};
     }
     else if (d_01 <= NEIGH_DIST && d_02 <= NEIGH_DIST){
-        rover_hash[0].neighbors = {1,2};
-        rover_hash[1].neighbors = {0};
-        rover_hash[2].neighbors = {0};
+//        rover_hash[0].neighbors = {1,2};
+//        rover_hash[1].neighbors = {0};
+//        rover_hash[2].neighbors = {0};
     }
     else if (d_02 <= NEIGH_DIST && d_12 <= NEIGH_DIST){
-        rover_hash[0].neighbors = {2};
-        rover_hash[1].neighbors = {2};
-        rover_hash[2].neighbors = {0,1};
+//        rover_hash[0].neighbors = {2};
+//        rover_hash[1].neighbors = {2};
+//        rover_hash[2].neighbors = {0,1};
     }
     else if (d_12 <= NEIGH_DIST && d_01 <= NEIGH_DIST){
-        rover_hash[0].neighbors = {1};
-        rover_hash[1].neighbors = {0,2};
-        rover_hash[2].neighbors = {1};
+//        rover_hash[0].neighbors = {1};
+//        rover_hash[1].neighbors = {0,2};
+//        rover_hash[2].neighbors = {1};
     }
     else if (d_01 <= NEIGH_DIST){
-        rover_hash[0].neighbors = {1};
-        rover_hash[1].neighbors = {0};
-        rover_hash[2].neighbors = {-1};
+//        rover_hash[0].neighbors = {1};
+//        rover_hash[1].neighbors = {0};
+//        rover_hash[2].neighbors = {-1};
     }
     else if (d_02 <= NEIGH_DIST){
-        rover_hash[0].neighbors = {2};
-        rover_hash[1].neighbors = {-1};
-        rover_hash[2].neighbors = {0};
+//        rover_hash[0].neighbors = {2};
+//        rover_hash[1].neighbors = {-1};
+//        rover_hash[2].neighbors = {0};
     }
     else if (d_12 <= NEIGH_DIST){
-        rover_hash[0].neighbors = {-1};
-        rover_hash[1].neighbors = {2};
-        rover_hash[2].neighbors = {1};
+//        rover_hash[0].neighbors = {-1};
+//        rover_hash[1].neighbors = {2};
+//        rover_hash[2].neighbors = {1};
     }
     else {
-        rover_hash[0].neighbors = {-1};
-        rover_hash[1].neighbors = {-1};
-        rover_hash[2].neighbors = {-1};
+//        rover_hash[0].neighbors = {-1};
+//        rover_hash[1].neighbors = {-1};
+//        rover_hash[2].neighbors = {-1};
     }
 };
 
