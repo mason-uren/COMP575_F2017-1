@@ -7,6 +7,9 @@
 
 #include <geometry_msgs/Pose2D.h>
 #include "Swarm.h"
+#include "RoverPose.h"
+#include "std_msgs/Float64MultiArray.h"
+
 
 /*
  * ROVER_REFS
@@ -66,12 +69,20 @@ void messageHandler(const std_msgs::String::ConstPtr &message);
 /*
  * Added Handlers
  */
-void headingHandler(const nav_msgs::Odometry::ConstPtr &message);
+void headingHandler(const std_msgs::Float64MultiArray::ConstPtr &message);
 
 /*
  * Helper Functions
  */
 std_msgs::String roverPose (const nav_msgs::Odometry::ConstPtr &message);
 std_msgs::String globalHeading ();
+
+typedef struct rover_pose{
+    double x;
+    double y;
+    double theta;
+} ROVER_POSE;
+
+std::map<int, ROVER_POSE> rover_hash;
 
 #endif //PROJECT_MOBILITY_H

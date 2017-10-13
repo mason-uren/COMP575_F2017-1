@@ -14,18 +14,22 @@
 #include <geometry_msgs/Pose2D.h>
 #include <geometry_msgs/Twist.h>
 #include <nav_msgs/Odometry.h>
-
 #include "Pose.h"
 #include "TargetState.h"
+#include "std_msgs/Int32MultiArray.h"
 
 // Custom messages
 #include <shared_messages/TagsImage.h>
 
 // To handle shutdown signals so the node quits properly in response to "rosnode kill"
-
 #include <signal.h>
+
+#include <map>
 #include <math.h>
+#include <list>
 #include "mobility.h"
+
+
 
 
 using namespace std;
@@ -83,7 +87,7 @@ int main(int argc, char **argv)
     /*
      * Added subsciber instantiation
      */
-    headingSubscriber = mNH.subscribe((rover_name + "/odom/ekf"), 10, headingHandler);
+    headingSubscriber = mNH.subscribe(("/currPose"), 10, headingHandler);
 
     status_publisher = mNH.advertise<std_msgs::String>((rover_name + "/status"), 1, true);
     velocityPublish = mNH.advertise<geometry_msgs::Twist>((rover_name + "/velocity"), 10);
@@ -99,8 +103,8 @@ int main(int argc, char **argv)
     /*
      * Added advertisers instatiation
      */
-    currentPose = mNH.advertise<std_msgs::String>((rover_name + "/heading"), 10, true);
-    globalAverageHeading = mNH.advertise<std_msgs::String>((rover_name + "/global_heading"), 10, true);
+    currentPose = mNH.advertise<std_msgs::Float64MultiArray>(("/currPose"), 10, true);
+    globalAverageHeading = mNH.advertise<std_msgs::String>(("/global_heading"), 10, true);
     localAverageHeading = mNH.advertise<std_msgs::String>((rover_name + "/local_heading"), 10, true);
     
     ros::spin();
@@ -146,6 +150,26 @@ void mobilityStateMachine(const ros::TimerEvent &)
 
         state_machine_msg.data = "WAITING, " + converter.str();
     }
+
+    /*
+     * Create current pose publisher for each rover
+     */
+    std_msgs::Float64MultiArray rover_pose;
+    if (rover_name == "achilles") {
+        agent.name = ACHILLES;
+    } else if (rover_name == "aeneas") {
+        agent.name = AENEAS;
+    } else if (rover_name == "ajax") {
+        agent.name = AJAX;
+    }
+    rover_pose.data.clear();
+    rover_pose.data.push_back(agent.name);
+    rover_pose.data.push_back(current_location.x);
+    rover_pose.data.push_back(current_location.y);
+    rover_pose.data.push_back(current_location.theta);
+    currentPose.publish(rover_pose);
+
+
     stateMachinePublish.publish(state_machine_msg);
 }
 
@@ -250,54 +274,46 @@ void sigintEventHandler(int sig)
 void messageHandler(const std_msgs::String::ConstPtr& message)
 {
 }
-void headingHandler(const nav_msgs::Odometry::ConstPtr &message) {
-    if (rover_name == "achilles") {
-        agent.name = ACHILLES;
-    } else if (rover_name == "aeneas") {
-        agent.name = AENEAS;
-    } else if (rover_name == "ajax") {
-        agent.name = AJAX;
-    }
-    std_msgs::String curr_pose = roverPose(message);
-    currentPose.publish(curr_pose);
-    // Place in rovers data in 'swarm'
-    swarm.vec[agent.name] = agent;
-    std::cout << "Rover name: " << agent.name << std::endl;
-    std::cout << "Swarm rovers: " << swarm.vec[agent.name].name << std::endl;
-    std::cout << "Rover heading: " << agent.current_pose.theta << std::endl;
-    std::cout << "Swarm rovers heading: " << swarm.vec[agent.name].current_pose.theta << std::endl;
+void headingHandler(const std_msgs::Float64MultiArray::ConstPtr &message) {
+    /*
+     * Create and populate hashtable
+     */
+//    std::map<int, ROVER_POSE> rover_hash;
+    rover_hash[message->data[0]] = {message->data[1], message->data[2], message->data[3]};
+    std::cout << "Hash map theta of Achilles: " << rover_hash[0].theta << std::endl;
     std_msgs::String global_avg_heading = globalHeading();
     globalAverageHeading.publish(global_avg_heading);
-    // Place update swarm_vector with gAH in 'swarm'
-    swarm.vec[agent.name] = agent;
-//    std::cout << "Rover gAH: " << rovers.agent_refs.global_heading << std::endl;
-//    std::cout << "Swarm gAH: " << swarm[rovers.agent_refs.name].agent_refs.global_heading << std::endl;
+    
+
+
+//    // Place in rovers data in 'swarm'
+//    swarm.vec[agent.name] = agent;
 }
-
-std_msgs::String roverPose (const nav_msgs::Odometry::ConstPtr &message) {
-    char buf[256];
-    std_msgs::String content;
-    double curr_x = message->pose.pose.position.x;
-    double curr_y = message->pose.pose.position.y;
-
-    /*
-     * Get theta rotation by converting quaternion orientation to pitch/roll/yaw
-     */
-    tf::Quaternion q(message->pose.pose.orientation.x, message->pose.pose.orientation.y,
-                     message->pose.pose.orientation.z, message->pose.pose.orientation.w);
-    tf::Matrix3x3 m(q);
-    double roll, pitch, yaw;
-    m.getRPY(roll, pitch, yaw);
-    snprintf(buf, 256, "Rover name: %s, x: %lf, y: %lf, theta: %lf",
-             rover_name.c_str(), curr_x, curr_y, yaw);
-    agent.current_pose.x = curr_x;
-    agent.current_pose.y = curr_y;
-    agent.current_pose.theta = yaw;
-    content.data = string(buf);
-
-    return content;
-}
-
+//
+//std_msgs::String roverPose (const nav_msgs::Odometry::ConstPtr &message) {
+//    char buf[256];
+//    std_msgs::String content;
+//    double curr_x = message->pose.pose.position.x;
+//    double curr_y = message->pose.pose.position.y;
+//
+//    /*
+//     * Get theta rotation by converting quaternion orientation to pitch/roll/yaw
+//     */
+//    tf::Quaternion q(message->pose.pose.orientation.x, message->pose.pose.orientation.y,
+//                     message->pose.pose.orientation.z, message->pose.pose.orientation.w);
+//    tf::Matrix3x3 m(q);
+//    double roll, pitch, yaw;
+//    m.getRPY(roll, pitch, yaw);
+//    snprintf(buf, 256, "Rover name: %s, x: %lf, y: %lf, theta: %lf",
+//             rover_name.c_str(), curr_x, curr_y, yaw);
+//    agent.current_pose.x = curr_x;
+//    agent.current_pose.y = curr_y;
+//    agent.current_pose.theta = yaw;
+//    content.data = string(buf);
+//
+//    return content;
+//}
+//
 std_msgs::String globalHeading (){
     char buf[256];
     std::vector<double> thetaG(2);
@@ -307,15 +323,24 @@ std_msgs::String globalHeading (){
      * Dynamically average global heading
      * NOTE: independent of the number of rovers
      */
-    for (std::vector<AGENT_REFS>::iterator iter = swarm.vec.begin(); iter != swarm.vec.end(); ++iter){
-        thetaG.at(0) += std::cos(iter->current_pose.theta);
-        thetaG.at(1) += std::sin(iter->current_pose.theta);
-        std::cout << "***ITER: " << iter->current_pose.theta << std::endl;
+    for (std::map<int, ROVER_POSE>::iterator it = rover_hash.begin(); it != rover_hash.end(); ++it){
+
+        thetaG[0] += std::cos(it->second.theta);
+        thetaG[1] += std::sin(it->second.theta);
     }
-    for (std::vector<double>::iterator iter = thetaG.begin(); iter != thetaG.end(); ++iter){ // Will only ever be of size two since only compontents are (x, y)
-        thetaG[*iter] /= swarm.vec.size();
+    for (std::vector<double>::iterator it = thetaG.begin(); it != thetaG.end(); ++it){
+        thetaG[*it] /= rover_hash.size();
     }
-    gAH = std::atan2(thetaG.at(1), thetaG.at(0));
+
+//    for (std::vector<AGENT_REFS>::iterator iter = swarm.vec.begin(); iter != swarm.vec.end(); ++iter){
+//        thetaG.at(0) += std::cos(iter->current_pose.theta);
+//        thetaG.at(1) += std::sin(iter->current_pose.theta);
+//        std::cout << "***ITER: " << iter->current_pose.theta << std::endl;
+//    }
+//    for (std::vector<double>::iterator iter = thetaG.begin(); iter != thetaG.end(); ++iter){ // Will only ever be of size two since only compontents are (x, y)
+//        thetaG[*iter] /= swarm.vec.size();
+//    }
+    gAH = std::atan2(thetaG[1], thetaG[2]);
     agent.global_heading = gAH;
 
     snprintf(buf, 256, "Global Heading: %lf", gAH);
