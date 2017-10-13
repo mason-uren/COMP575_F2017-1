@@ -79,13 +79,17 @@ std_msgs::String globalHeading ();
 void neighbors ();
 std_msgs::String localHeading ();
 
+typedef struct {
+    std::vector<double> neighbor;
+} NEIGHBORS;
+
 typedef struct rover_pose{
     double x;
     double y;
     double theta;
-    std::vector<std::vector<int> > neighbors;
+    NEIGHBORS neighbors;
 } ROVER_POSE;
 
-std::map<int, RoverPose> rover_hash;
 
+std::map<int, RoverPose> rover_hash;
 #endif //PROJECT_MOBILITY_H

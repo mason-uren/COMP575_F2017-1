@@ -14,12 +14,12 @@ class RoverPose {
         double theta;
         std::vector<std::vector<int> > neighbors;
 
-        explicit RoverPose (std::vector<double> pose) : x(pose[0]), y(pose[1]), theta(pose[2]){
-            this->x = pose[0];
-            this->y = pose[1];
-            this->theta = pose[2];
+        RoverPose (std::vector<double> pose) : x(pose[0]), y(pose[1]), theta(pose[2]){
+            this->x = 0;
+            this->y = 0;
+            this->theta = 0;
         }
-        explicit RoverPose() {}
+        RoverPose() {}
 
 };
 
