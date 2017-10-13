@@ -281,39 +281,20 @@ void headingHandler(const std_msgs::Float64MultiArray::ConstPtr &message) {
 //    std::map<int, ROVER_POSE> rover_hash;
     rover_hash[message->data[0]] = {message->data[1], message->data[2], message->data[3]};
     std::cout << "Hash map theta of Achilles: " << rover_hash[0].theta << std::endl;
+    // Calc global heading of all the rovers
     std_msgs::String global_avg_heading = globalHeading();
     globalAverageHeading.publish(global_avg_heading);
-    
+
+    // Calc which rovers are neighbors
+    std::vector<int> nB = neighbors();
+
+    // Calc local heading of neighbors
+
 
 
 //    // Place in rovers data in 'swarm'
 //    swarm.vec[agent.name] = agent;
 }
-//
-//std_msgs::String roverPose (const nav_msgs::Odometry::ConstPtr &message) {
-//    char buf[256];
-//    std_msgs::String content;
-//    double curr_x = message->pose.pose.position.x;
-//    double curr_y = message->pose.pose.position.y;
-//
-//    /*
-//     * Get theta rotation by converting quaternion orientation to pitch/roll/yaw
-//     */
-//    tf::Quaternion q(message->pose.pose.orientation.x, message->pose.pose.orientation.y,
-//                     message->pose.pose.orientation.z, message->pose.pose.orientation.w);
-//    tf::Matrix3x3 m(q);
-//    double roll, pitch, yaw;
-//    m.getRPY(roll, pitch, yaw);
-//    snprintf(buf, 256, "Rover name: %s, x: %lf, y: %lf, theta: %lf",
-//             rover_name.c_str(), curr_x, curr_y, yaw);
-//    agent.current_pose.x = curr_x;
-//    agent.current_pose.y = curr_y;
-//    agent.current_pose.theta = yaw;
-//    content.data = string(buf);
-//
-//    return content;
-//}
-//
 std_msgs::String globalHeading (){
     char buf[256];
     std::vector<double> thetaG(2);
@@ -331,15 +312,6 @@ std_msgs::String globalHeading (){
     for (std::vector<double>::iterator it = thetaG.begin(); it != thetaG.end(); ++it){
         thetaG[*it] /= rover_hash.size();
     }
-
-//    for (std::vector<AGENT_REFS>::iterator iter = swarm.vec.begin(); iter != swarm.vec.end(); ++iter){
-//        thetaG.at(0) += std::cos(iter->current_pose.theta);
-//        thetaG.at(1) += std::sin(iter->current_pose.theta);
-//        std::cout << "***ITER: " << iter->current_pose.theta << std::endl;
-//    }
-//    for (std::vector<double>::iterator iter = thetaG.begin(); iter != thetaG.end(); ++iter){ // Will only ever be of size two since only compontents are (x, y)
-//        thetaG[*iter] /= swarm.vec.size();
-//    }
     gAH = std::atan2(thetaG[1], thetaG[2]);
     agent.global_heading = gAH;
 
@@ -347,4 +319,60 @@ std_msgs::String globalHeading (){
     content.data = string(buf);
 
     return content;
+}
+
+void neighbors () {
+    ROVER_POSE rover0 = {rover_hash[0].x, rover_hash[0].y, rover_hash[0].theta};
+    ROVER_POSE rover1 = {rover_hash[1].x, rover_hash[1].y, rover_hash[1].theta};
+    ROVER_POSE rover2 = {rover_hash[2].theta, rover_hash[2].y, rover_hash[2].theta};
+
+    double d_01 = sqrt(pow((rover0.x - rover1.x), 2) + pow((rover0.y - rover1.y), 2));
+    double d_02 = sqrt(pow((rover0.x - rover2.x), 2) + pow((rover0.y - rover2.y), 2));
+    double d_12 = sqrt(pow((rover1.x - rover2.x), 2) + pow((rover1.y - rover2.y), 2));
+
+    if (d_01 <= NEIGH_DIST && d_02 <= NEIGH_DIST && d_12 <= NEIGH_DIST){ // All rovers are near eachother
+        rover_hash[0].neighbors = {1,2};
+        rover_hash[1].neighbors = {0,2};
+        rover_hash[2].neighbors = {0,1};
+    }
+    else if (d_01 <= NEIGH_DIST && d_02 <= NEIGH_DIST){
+        rover_hash[0].neighbors = {1,2};
+        rover_hash[1].neighbors = {0};
+        rover_hash[2].neighbors = {0};
+    }
+    else if (d_02 <= NEIGH_DIST && d_12 <= NEIGH_DIST){
+        rover_hash[0].neighbors = {2};
+        rover_hash[1].neighbors = {2};
+        rover_hash[2].neighbors = {0,1};
+    }
+    else if (d_12 <= NEIGH_DIST && d_01 <= NEIGH_DIST){
+        rover_hash[0].neighbors = {1};
+        rover_hash[1].neighbors = {0,2};
+        rover_hash[2].neighbors = {1};
+    }
+    else if (d_01 <= NEIGH_DIST){
+        rover_hash[0].neighbors = {1};
+        rover_hash[1].neighbors = {0};
+        rover_hash[2].neighbors = {-1};
+    }
+    else if (d_02 <= NEIGH_DIST){
+        rover_hash[0].neighbors = {2};
+        rover_hash[1].neighbors = {-1};
+        rover_hash[2].neighbors = {0};
+    }
+    else if (d_12 <= NEIGH_DIST){
+        rover_hash[0].neighbors = {-1};
+        rover_hash[1].neighbors = {2};
+        rover_hash[2].neighbors = {1};
+    }
+    else {
+        rover_hash[0].neighbors = {-1};
+        rover_hash[1].neighbors = {-1};
+        rover_hash[2].neighbors = {-1};
+    }
+};
+
+
+std_msgs::String localHeading () {
+
 }

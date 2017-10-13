@@ -10,6 +10,7 @@
 #include "RoverPose.h"
 #include "std_msgs/Float64MultiArray.h"
 
+#define NEIGH_DIST 2
 
 /*
  * ROVER_REFS
@@ -74,13 +75,15 @@ void headingHandler(const std_msgs::Float64MultiArray::ConstPtr &message);
 /*
  * Helper Functions
  */
-std_msgs::String roverPose (const nav_msgs::Odometry::ConstPtr &message);
 std_msgs::String globalHeading ();
+void neighbors ();
+std_msgs::String localHeading ();
 
 typedef struct rover_pose{
     double x;
     double y;
     double theta;
+    double neighbors[];
 } ROVER_POSE;
 
 std::map<int, ROVER_POSE> rover_hash;
