@@ -273,30 +273,17 @@ void messageHandler(const std_msgs::String::ConstPtr& message)
 {
 }
 void headingHandler(const std_msgs::Float64MultiArray::ConstPtr &message) {
-//    Create Hashmap
-//    rover_hash = new std::map<int, RoverPose>;
-//    Create vector to pass to RoverPose
-    std::cout << "Start headingHandler" << std::endl;
     std::vector<double> message_data;
-    std::cout << "Pushing on message_data vector" << std::endl;
     message_data.push_back(message->data[1]);
     message_data.push_back(message->data[2]);
     message_data.push_back(message->data[3]);
-    std::cout << "Pushed" << std::endl;
 //    Create RoverPose
-    std::cout << "Create RoverPose" << std::endl;
     RoverPose rover_data((int) message->data[0], message_data);
 //    Populate Hash
-    std::cout << "Create rover_hash" << std::endl;
     rover_hash[(int) message->data[0]] = rover_data;
-    std::cout << "*** Heading Handler: Name " << rover_hash[(int) message->data[0]].name << std::endl;
-    std::cout << "*** Heading Handler: X " << rover_hash[(int) message->data[0]].x << std::endl;
-    std::cout << "*** Heading Handler: Y " << rover_hash[(int) message->data[0]].y << std::endl;
-    std::cout << "*** Heading Handler: Theta " << rover_hash[(int) message->data[0]].theta << std::endl;
 
 //    Call globalHeading
     std_msgs::String gH = globalHeading();
-    std::cout << "headingHandler End" << std::endl;
     globalAverageHeading.publish(gH);
 
 //    Call neighbors
@@ -313,26 +300,19 @@ std_msgs::String globalHeading (){
     std_msgs::String content;
     double gAH;
 //    Iterate through hash and populate thetaG with theta values
-    std::cout << "Before iteration" << std::endl;
     for (std::map<int, RoverPose>::iterator it = rover_hash.begin(); it != rover_hash.end(); ++it){
-        std::cout << "---> Rover Name: " << it->second.name << std::endl;
-        std::cout << "---> Rover Theta: " << it->second.theta << std::endl;
         thetaG.at(0) += cos(it->second.theta);
         thetaG.at(1) += sin(it->second.theta);
     }
-    std::cout << "After iteration" << std::endl;
-    std::cout << "Next iteration" << std::endl;
     thetaG.at(0) /= rover_hash.size();
     thetaG.at(1) /= rover_hash.size();
+    gAH = std::atan2(thetaG[1], thetaG[0]);
 
-    std::cout << "Done iterating" << std::endl;
-    gAH = std::atan2(thetaG[1], thetaG[0]);\
-    std::cout << "Calculated gAH " << gAH << std::endl;
 //    Format string
     snprintf(buf, 256, "Global Heading: %lf", gAH);
     content.data = string(buf);
     memset(buf, 0, 255); // Clear char array
-    std::cout << "globalHeading End" << std::endl;
+
     return content;
 }
 
@@ -345,7 +325,7 @@ void neighbors () {
         rover_hash[it->first].neighbors.clear();
     }
 //    All rovers are neighbors
-    if (d01 < NEIGH_DIST && d02 < NEIGH_DIST && d12 < NEIGH_DIST){
+    if (d01 <= NEIGH_DIST && d02 <= NEIGH_DIST && d12 <= NEIGH_DIST){
         rover_hash[0].neighbors.push_back(1);
         rover_hash[0].neighbors.push_back(2);
         rover_hash[1].neighbors.push_back(0);
@@ -354,19 +334,19 @@ void neighbors () {
         rover_hash[2].neighbors.push_back(1);
     }
 //    Only two are neighbors
-    else if ((d01 < NEIGH_DIST && d02 < NEIGH_DIST) && d12 >= NEIGH_DIST){
+    else if ((d01 <= NEIGH_DIST && d02 <= NEIGH_DIST) && d12 > NEIGH_DIST){
         rover_hash[0].neighbors.push_back(1);
         rover_hash[0].neighbors.push_back(2);
         rover_hash[1].neighbors.push_back(0);
         rover_hash[2].neighbors.push_back(0);
     }
-    else if ((d01 < NEIGH_DIST && d12 < NEIGH_DIST) && d02 >= NEIGH_DIST){
+    else if ((d01 <= NEIGH_DIST && d12 <= NEIGH_DIST) && d02 > NEIGH_DIST){
         rover_hash[1].neighbors.push_back(0);
         rover_hash[1].neighbors.push_back(2);
         rover_hash[0].neighbors.push_back(1);
         rover_hash[2].neighbors.push_back(1);
     }
-    else if ((d12 < NEIGH_DIST && d02 < NEIGH_DIST) && d01 >= NEIGH_DIST){
+    else if ((d12 <= NEIGH_DIST && d02 <= NEIGH_DIST) && d01 > NEIGH_DIST){
         rover_hash[2].neighbors.push_back(0);
         rover_hash[2].neighbors.push_back(1);
         rover_hash[0].neighbors.push_back(2);
@@ -392,28 +372,20 @@ std_msgs::String localHeading () {
     } else if (rover_name == "ajax") {
         rover.name = AJAX;
     }
-//    Set flagged values
-    thetaG.at(0) = 10; // values outside of range
-    thetaG.at(0) = 10;
+
 //    Iterate through respective neighbors vector
     for (std::vector<int>::iterator it = rover_hash[rover.name].neighbors.begin(); it != rover_hash[rover.name].neighbors.end(); ++it){
         rNeighb.push_back(*it);
     }
 
-    if (!rNeighb.empty()){
-//        Iterator through neighboring rovers pose
-        for (std::vector<double>::iterator it = rNeighb.begin(); it != rNeighb.end(); ++it){
-            thetaG.at(0) += cos(rover_hash[*it].theta);
-            thetaG.at(1) += sin(rover_hash[*it].theta);
-        }
-        thetaG.at(0) /= thetaG.size();
-        thetaG.at(1) /= thetaG.size();
-        lAH = std::atan2(thetaG[1], thetaG[0]);
+//    Iterator through neighboring rovers pose
+    for (std::vector<double>::iterator it = rNeighb.begin(); it != rNeighb.end(); ++it){
+        thetaG.at(0) += cos(rover_hash[*it].theta);
+        thetaG.at(1) += sin(rover_hash[*it].theta);
     }
-//    No neighbors
-    else {
-        lAH = 0;
-    }
+    thetaG.at(0) /= thetaG.size();
+    thetaG.at(1) /= thetaG.size();
+    lAH = std::atan2(thetaG[1], thetaG[0]);
 
 //    Format string
     snprintf(buf, 256, "Local Heading: %lf", lAH);
