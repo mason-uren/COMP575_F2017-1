@@ -10,7 +10,9 @@
 #include "RoverPose.h"
 #include "std_msgs/Float64MultiArray.h"
 
+
 #define NEIGH_DIST 2
+#define TUNING_CONST 0.5
 
 /*
  * ROVER_REFS
@@ -80,7 +82,7 @@ void neighbors ();
 std_msgs::String localHeading ();
 
 typedef enum {
-    ACHILLES = 0, AENEAS, AJAX
+    ACHILLES = 0, AENEAS, AJAX, DIOMEDES, HECTOR, PARIS
 } ROVER_NAME;
 
 typedef struct {

@@ -16,7 +16,6 @@
 #include <nav_msgs/Odometry.h>
 #include "Pose.h"
 #include "TargetState.h"
-#include "std_msgs/Int32MultiArray.h"
 
 // Custom messages
 #include <shared_messages/TagsImage.h>
@@ -110,6 +109,21 @@ int main(int argc, char **argv)
 
 void mobilityStateMachine(const ros::TimerEvent &)
 {
+    RoverPose rover;
+    if (rover_name == "achilles") {
+        rover.name = ACHILLES;
+    } else if (rover_name == "aeneas") {
+        rover.name = AENEAS;
+    } else if (rover_name == "ajax") {
+        rover.name = AJAX;
+    } else if (rover_name == "diomedes") {
+        rover.name = DIOMEDES;
+    } else if (rover_name == "hector") {
+        rover.name = HECTOR;
+    } else if (rover_name == "paris") {
+        rover.name = PARIS;
+    }
+
     std_msgs::String state_machine_msg;
 
     if ((simulation_mode == 2 || simulation_mode == 3)) // Robot is in automode
@@ -125,8 +139,10 @@ void mobilityStateMachine(const ros::TimerEvent &)
         case STATE_MACHINE_TRANSLATE:
         {
             state_machine_msg.data = "TRANSLATING";//, " + converter.str();
-            float angular_velocity = 0.2;
-            float linear_velocity = 0.1;
+//            float angular_velocity = 0.2;
+//            float linear_velocity = 0.1;
+            double angular_velocity = TUNING_CONST * (rover_hash[rover.name].avg_local_theta - current_location.theta);
+            float linear_velocity = 0;
             setVelocity(linear_velocity, angular_velocity);
             break;
         }
@@ -152,14 +168,6 @@ void mobilityStateMachine(const ros::TimerEvent &)
      * Create current pose publisher for each rover
      */
     std_msgs::Float64MultiArray rover_pose;
-    RoverPose rover;
-    if (rover_name == "achilles") {
-        rover.name = ACHILLES;
-    } else if (rover_name == "aeneas") {
-        rover.name = AENEAS;
-    } else if (rover_name == "ajax") {
-        rover.name = AJAX;
-    }
     rover_pose.data.clear();
     rover_pose.data.push_back(rover.name);
     rover_pose.data.push_back(current_location.x);
@@ -285,6 +293,9 @@ void headingHandler(const std_msgs::Float64MultiArray::ConstPtr &message) {
 //    Call globalHeading
     std_msgs::String gH = globalHeading();
     globalAverageHeading.publish(gH);
+    char *end;
+    rover_hash[(int) message->data[0]].avg_global_theta = std::strtod(gH.data.c_str(), &end); // Convert to double
+    end = NULL; // clear pointer
 
 //    Call neighbors
     neighbors();
@@ -292,7 +303,10 @@ void headingHandler(const std_msgs::Float64MultiArray::ConstPtr &message) {
 //    Call localHeading
     std_msgs::String lH = localHeading();
     localAverageHeading.publish(lH);
+    rover_hash[(int) message->data[0]].avg_local_theta = std::strtod(lH.data.c_str(), &end);
+    end = NULL; // clear pointer
 }
+
 std_msgs::String globalHeading (){
     char buf[256];
     static const int arr[] = {0,0}; // Default bad values
@@ -309,7 +323,7 @@ std_msgs::String globalHeading (){
     gAH = std::atan2(thetaG[1], thetaG[0]);
 
 //    Format string
-    snprintf(buf, 256, "Global Heading: %lf", gAH);
+    snprintf(buf, 256, "%lf", gAH);
     content.data = string(buf);
     memset(buf, 0, 255); // Clear char array
 
@@ -371,6 +385,12 @@ std_msgs::String localHeading () {
         rover.name = AENEAS;
     } else if (rover_name == "ajax") {
         rover.name = AJAX;
+    } else if (rover_name == "diomedes") {
+        rover.name = DIOMEDES;
+    } else if (rover_name == "hector") {
+        rover.name = HECTOR;
+    } else if (rover_name == "paris") {
+        rover.name = PARIS;
     }
 
 //    Iterate through respective neighbors vector
@@ -388,7 +408,7 @@ std_msgs::String localHeading () {
     lAH = std::atan2(thetaG[1], thetaG[0]);
 
 //    Format string
-    snprintf(buf, 256, "Local Heading: %lf", lAH);
+    snprintf(buf, 256, "%lf", lAH);
     content.data = string(buf);
     memset(buf, 0, 255); // Clear char array
 
