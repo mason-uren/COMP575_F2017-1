@@ -16,12 +16,8 @@ class RoverPose {
         std::vector<int> neighbors;
 
         explicit RoverPose (int name, std::vector<double> pose) : name(name), x(pose[0]), y(pose[1]), theta(pose[2]){
-//            this->x = 0;
-//            this->y = 0;
-//            this->theta = 0;
             static const int arr[] = {-1,-1,-1}; // Default bad values
             this->neighbors = std::vector<int>(arr, arr + sizeof(arr) / sizeof(arr[0])); //
-//            std::vector<std::vector<int> > neighbors(3);
         }
         RoverPose() {}
 
