@@ -15,8 +15,8 @@
 /*
  * ROVER_REFS
  */
-Swarm swarm(NUM_ROVERS);
-AGENT_REFS agent;
+//Swarm swarm(NUM_ROVERS);
+//AGENT_REFS agent;
 
 
 // Mobility Logic Functions
@@ -79,11 +79,16 @@ std_msgs::String globalHeading ();
 void neighbors ();
 std_msgs::String localHeading ();
 
+typedef enum {
+    ACHILLES = 0, AENEAS, AJAX
+} ROVER_NAME;
+
 typedef struct {
     std::vector<double> neighbor;
 } NEIGHBORS;
 
 typedef struct rover_pose{
+    int name;
     double x;
     double y;
     double theta;
