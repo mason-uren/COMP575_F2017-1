@@ -142,6 +142,7 @@ void mobilityStateMachine(const ros::TimerEvent &)
 //            float angular_velocity = 0.2;
 //            float linear_velocity = 0.1;
             double angular_velocity = TUNING_CONST * (rover_hash[rover.name].avg_local_theta - current_location.theta);
+            std::cout << "Angular velecity: " << angular_velocity << std::endl;
             float linear_velocity = 0;
             setVelocity(linear_velocity, angular_velocity);
             break;
@@ -298,10 +299,11 @@ void headingHandler(const std_msgs::Float64MultiArray::ConstPtr &message) {
     end = NULL; // clear pointer
 
 //    Call neighbors
-    neighbors();
+    std::cout << "HEADING HANDLE Rover name: " << message->data[0] << std::endl;
+    neighbors((int) message->data[0]);
 
 //    Call localHeading
-    std_msgs::String lH = localHeading();
+    std_msgs::String lH = localHeading((int) message->data[0]);
     localAverageHeading.publish(lH);
     rover_hash[(int) message->data[0]].avg_local_theta = std::strtod(lH.data.c_str(), &end);
     end = NULL; // clear pointer
@@ -330,46 +332,24 @@ std_msgs::String globalHeading (){
     return content;
 }
 
-void neighbors () {
-    double d01 = sqrt(pow(rover_hash[0].x - rover_hash[1].x, 2) + pow(rover_hash[0].y - rover_hash[1].y, 2));
-    double d02 = sqrt(pow(rover_hash[0].x - rover_hash[2].x, 2) + pow(rover_hash[0].y - rover_hash[2].y, 2));
-    double d12 = sqrt(pow(rover_hash[1].x - rover_hash[2].x, 2) + pow(rover_hash[1].y - rover_hash[2].y, 2));
+void neighbors (int name) {
 //    Empty neighbors vector
     for (std::map<int, RoverPose>::iterator it = rover_hash.begin(); it != rover_hash.end(); ++it){
         rover_hash[it->first].neighbors.clear();
     }
-//    All rovers are neighbors
-    if (d01 <= NEIGH_DIST && d02 <= NEIGH_DIST && d12 <= NEIGH_DIST){
-        rover_hash[0].neighbors.push_back(1);
-        rover_hash[0].neighbors.push_back(2);
-        rover_hash[1].neighbors.push_back(0);
-        rover_hash[1].neighbors.push_back(2);
-        rover_hash[2].neighbors.push_back(0);
-        rover_hash[2].neighbors.push_back(1);
-    }
-//    Only two are neighbors
-    else if ((d01 <= NEIGH_DIST && d02 <= NEIGH_DIST) && d12 > NEIGH_DIST){
-        rover_hash[0].neighbors.push_back(1);
-        rover_hash[0].neighbors.push_back(2);
-        rover_hash[1].neighbors.push_back(0);
-        rover_hash[2].neighbors.push_back(0);
-    }
-    else if ((d01 <= NEIGH_DIST && d12 <= NEIGH_DIST) && d02 > NEIGH_DIST){
-        rover_hash[1].neighbors.push_back(0);
-        rover_hash[1].neighbors.push_back(2);
-        rover_hash[0].neighbors.push_back(1);
-        rover_hash[2].neighbors.push_back(1);
-    }
-    else if ((d12 <= NEIGH_DIST && d02 <= NEIGH_DIST) && d01 > NEIGH_DIST){
-        rover_hash[2].neighbors.push_back(0);
-        rover_hash[2].neighbors.push_back(1);
-        rover_hash[0].neighbors.push_back(2);
-        rover_hash[1].neighbors.push_back(2);
+//    Hold constant the current rover
+    RoverPose curr_rover = rover_hash[name];
+//    Iterate through remaining rovers
+    for (std::map<int, RoverPose>::iterator it = rover_hash.begin(); it != rover_hash.end(); ++it){
+        if ((it->first != name) && (hypot(curr_rover.x - it->second.x, curr_rover.y - it->second.y) < 2)){
+            rover_hash[name].neighbors.push_back(it->first); // save the neighbors to the constant rover
+            rover_hash[it->first].neighbors.push_back(name); // save the neighbors to the other rover
+        }
     }
 }
 
 
-std_msgs::String localHeading () {
+std_msgs::String localHeading (int name) {
     char buf[256];
     static const int arr[] = {0,0}; // Default bad values
     std::vector<double> thetaG(arr, arr + sizeof(arr) / sizeof(arr[0]));
@@ -378,23 +358,8 @@ std_msgs::String localHeading () {
     ROVER_POSE rover;
     std::vector<double> rNeighb;
 
-//    Decide which rover we are assigning neighbors to
-    if (rover_name == "achilles") {
-        rover.name = ACHILLES;
-    } else if (rover_name == "aeneas") {
-        rover.name = AENEAS;
-    } else if (rover_name == "ajax") {
-        rover.name = AJAX;
-    } else if (rover_name == "diomedes") {
-        rover.name = DIOMEDES;
-    } else if (rover_name == "hector") {
-        rover.name = HECTOR;
-    } else if (rover_name == "paris") {
-        rover.name = PARIS;
-    }
-
 //    Iterate through respective neighbors vector
-    for (std::vector<int>::iterator it = rover_hash[rover.name].neighbors.begin(); it != rover_hash[rover.name].neighbors.end(); ++it){
+    for (std::vector<int>::iterator it = rover_hash[name].neighbors.begin(); it != rover_hash[name].neighbors.end(); ++it){
         rNeighb.push_back(*it);
     }
 
