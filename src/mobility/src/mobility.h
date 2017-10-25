@@ -85,17 +85,17 @@ typedef enum {
     ACHILLES = 0, AENEAS, AJAX, DIOMEDES, HECTOR, PARIS
 } ROVER_NAME;
 
-typedef struct {
-    std::vector<double> neighbor;
-} NEIGHBORS;
+//typedef struct {
+//    std::vector<double> neighbor;
+//} NEIGHBORS;
 
-typedef struct rover_pose{
-    int name;
-    double x;
-    double y;
-    double theta;
-    NEIGHBORS neighbors;
-} ROVER_POSE;
+//typedef struct rover_pose{
+//    int name;
+//    double x;
+//    double y;
+//    double theta;
+//    NEIGHBORS neighbors;
+//} ROVER_POSE;
 
 
 std::map<int, RoverPose> rover_hash;

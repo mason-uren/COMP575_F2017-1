@@ -109,19 +109,19 @@ int main(int argc, char **argv)
 
 void mobilityStateMachine(const ros::TimerEvent &)
 {
-    RoverPose rover;
+    int rover;
     if (rover_name == "achilles") {
-        rover.name = ACHILLES;
+        rover = ACHILLES;
     } else if (rover_name == "aeneas") {
-        rover.name = AENEAS;
+        rover = AENEAS;
     } else if (rover_name == "ajax") {
-        rover.name = AJAX;
+        rover = AJAX;
     } else if (rover_name == "diomedes") {
-        rover.name = DIOMEDES;
+        rover = DIOMEDES;
     } else if (rover_name == "hector") {
-        rover.name = HECTOR;
+        rover = HECTOR;
     } else if (rover_name == "paris") {
-        rover.name = PARIS;
+        rover = PARIS;
     }
 
     std_msgs::String state_machine_msg;
@@ -141,7 +141,7 @@ void mobilityStateMachine(const ros::TimerEvent &)
             state_machine_msg.data = "TRANSLATING";//, " + converter.str();
 //            float angular_velocity = 0.2;
 //            float linear_velocity = 0.1;
-            double angular_velocity = TUNING_CONST * (rover_hash[rover.name].avg_local_theta - current_location.theta);
+            double angular_velocity = TUNING_CONST * (rover_hash[rover].avg_local_theta - current_location.theta);
             std::cout << "Angular velecity: " << angular_velocity << std::endl;
             float linear_velocity = 0;
             setVelocity(linear_velocity, angular_velocity);
@@ -170,7 +170,7 @@ void mobilityStateMachine(const ros::TimerEvent &)
      */
     std_msgs::Float64MultiArray rover_pose;
     rover_pose.data.clear();
-    rover_pose.data.push_back(rover.name);
+    rover_pose.data.push_back(rover);
     rover_pose.data.push_back(current_location.x);
     rover_pose.data.push_back(current_location.y);
     rover_pose.data.push_back(current_location.theta);
@@ -282,30 +282,31 @@ void messageHandler(const std_msgs::String::ConstPtr& message)
 {
 }
 void headingHandler(const std_msgs::Float64MultiArray::ConstPtr &message) {
-    std::vector<double> message_data;
-    message_data.push_back(message->data[1]);
-    message_data.push_back(message->data[2]);
-    message_data.push_back(message->data[3]);
+    int current_rover = (int) message->data[0];
+    geometry_msgs::Pose2D msg_pose;
+    msg_pose.x = message->data[1];
+    msg_pose.y = message->data[2];
+    msg_pose.theta = message->data[3];
+
 //    Create RoverPose
-    RoverPose rover_data((int) message->data[0], message_data);
+    RoverPose rover_data(msg_pose);
 //    Populate Hash
-    rover_hash[(int) message->data[0]] = rover_data;
+    rover_hash[current_rover] = rover_data;
 
 //    Call globalHeading
     std_msgs::String gH = globalHeading();
     globalAverageHeading.publish(gH);
     char *end;
-    rover_hash[(int) message->data[0]].avg_global_theta = std::strtod(gH.data.c_str(), &end); // Convert to double
+    rover_hash[current_rover].avg_global_theta = std::strtod(gH.data.c_str(), &end); // Convert to double
     end = NULL; // clear pointer
 
 //    Call neighbors
-    std::cout << "HEADING HANDLE Rover name: " << message->data[0] << std::endl;
-    neighbors((int) message->data[0]);
+    neighbors(current_rover);
 
 //    Call localHeading
     std_msgs::String lH = localHeading((int) message->data[0]);
     localAverageHeading.publish(lH);
-    rover_hash[(int) message->data[0]].avg_local_theta = std::strtod(lH.data.c_str(), &end);
+    rover_hash[current_rover].avg_local_theta = std::strtod(lH.data.c_str(), &end);
     end = NULL; // clear pointer
 }
 
@@ -317,8 +318,8 @@ std_msgs::String globalHeading (){
     double gAH;
 //    Iterate through hash and populate thetaG with theta values
     for (std::map<int, RoverPose>::iterator it = rover_hash.begin(); it != rover_hash.end(); ++it){
-        thetaG.at(0) += cos(it->second.theta);
-        thetaG.at(1) += sin(it->second.theta);
+        thetaG.at(0) += cos(it->second.rover_pose.theta);
+        thetaG.at(1) += sin(it->second.rover_pose.theta);
     }
     thetaG.at(0) /= rover_hash.size();
     thetaG.at(1) /= rover_hash.size();
@@ -341,7 +342,7 @@ void neighbors (int name) {
     RoverPose curr_rover = rover_hash[name];
 //    Iterate through remaining rovers
     for (std::map<int, RoverPose>::iterator it = rover_hash.begin(); it != rover_hash.end(); ++it){
-        if ((it->first != name) && (hypot(curr_rover.x - it->second.x, curr_rover.y - it->second.y) < 2)){
+        if ((it->first != name) && (hypot(curr_rover.rover_pose.x - it->second.rover_pose.x, curr_rover.rover_pose.y - it->second.rover_pose.y) < 2)){
             rover_hash[name].neighbors.push_back(it->first); // save the neighbors to the constant rover
             rover_hash[it->first].neighbors.push_back(name); // save the neighbors to the other rover
         }
@@ -355,7 +356,6 @@ std_msgs::String localHeading (int name) {
     std::vector<double> thetaG(arr, arr + sizeof(arr) / sizeof(arr[0]));
     std_msgs::String content;
     double lAH;
-    ROVER_POSE rover;
     std::vector<double> rNeighb;
 
 //    Iterate through respective neighbors vector
@@ -365,8 +365,8 @@ std_msgs::String localHeading (int name) {
 
 //    Iterator through neighboring rovers pose
     for (std::vector<double>::iterator it = rNeighb.begin(); it != rNeighb.end(); ++it){
-        thetaG.at(0) += cos(rover_hash[*it].theta);
-        thetaG.at(1) += sin(rover_hash[*it].theta);
+        thetaG.at(0) += cos(rover_hash[*it].rover_pose.theta);
+        thetaG.at(1) += sin(rover_hash[*it].rover_pose.theta);
     }
     thetaG.at(0) /= thetaG.size();
     thetaG.at(1) /= thetaG.size();
