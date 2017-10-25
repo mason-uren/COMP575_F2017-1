@@ -15,7 +15,7 @@ class RoverPose {
         double avg_global_theta;
         double avg_local_theta;
         std::vector<int> neighbors;
-    
+
         explicit RoverPose (geometry_msgs::Pose2D pose) : rover_pose(pose){
             static const int arr[] = {-1,-1,-1}; // Default bad values
             this->neighbors = std::vector<int>(arr, arr + sizeof(arr) / sizeof(arr[0]));

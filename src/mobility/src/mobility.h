@@ -12,7 +12,7 @@
 
 
 #define NEIGH_DIST 2
-#define TUNING_CONST 0.5
+#define TUNING_CONST 0.45
 
 /*
  * ROVER_REFS

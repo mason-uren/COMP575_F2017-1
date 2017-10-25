@@ -342,7 +342,7 @@ void neighbors (int name) {
     RoverPose curr_rover = rover_hash[name];
 //    Iterate through remaining rovers
     for (std::map<int, RoverPose>::iterator it = rover_hash.begin(); it != rover_hash.end(); ++it){
-        if ((it->first != name) && (hypot(curr_rover.rover_pose.x - it->second.rover_pose.x, curr_rover.rover_pose.y - it->second.rover_pose.y) < 2)){
+        if ((it->first != name) && (hypot(curr_rover.rover_pose.x - it->second.rover_pose.x, curr_rover.rover_pose.y - it->second.rover_pose.y) < NEIGH_DIST)){
             rover_hash[name].neighbors.push_back(it->first); // save the neighbors to the constant rover
             rover_hash[it->first].neighbors.push_back(name); // save the neighbors to the other rover
         }
