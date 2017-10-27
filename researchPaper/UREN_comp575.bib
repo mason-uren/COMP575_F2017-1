@@ -19,4 +19,36 @@
   abstract     = {In this paper we address the problem of estimating the poses of a team of agents when they do not share any common reference frame. Each agent is capable of measur- ing the relative position and orientation of its neighboring agents, however these measurements are not exact but they are corrupted with noises. The goal is to compute the pose of each agent relative to the anchor node from noisy relative pose measurements. We present an strategy where, first of all, the agents compute their orientations relative to an anchor node. After that, they update the relative position measurements according to these orientations, to finally compute their posi- tions. As contribution we discuss the proposed strategy, that has the interesting property that can be executed in a distributed fashion. The distributed implementation allows each agent to recover its pose using exclusively local information and local interactions with its neighbors. Besides, it only requires each node to maintain an estimate of its own orientation and position. Thus, the memory load of the algorithm is low compared to methods where each agent must also estimate the positions and orientations of any other agent.},
 }
 
+@Article{becker2009analyzing,
+  author    = {Becker, Raphen and Carlin, Alan and Lesser, Victor and Zilberstein, Shlomo},
+  title     = {Analyzing myopic approaches for multi-agent communication},
+  journal   = {Computational Intelligence},
+  year      = {2009},
+  volume    = {25},
+  number    = {1},
+  pages     = {31--50},
+  abstract  = {Choosing when to communicate is a fundamental problem in multi-agent systems. This problem becomes particularly challenging when communication is constrained and each agent has different partial information about the overall situation. We take a decision-theoretic approach to this problem that balances the benefits of communication against the costs. Although computing the exact value of communication is intractable, it can be estimated using a standard myopic assumption—that communication is only possible at the present time. We examine specific situations in which this assumption leads to poor performance and demonstrate an alternative approach that relaxes the assumption and improves performance. The results provide an effective method for value-driven communication policies in multi-agent systems.},
+  publisher = {Wiley Online Library},
+}
+
+@InProceedings{rothermich2004distributed,
+  author       = {Rothermich, Joseph A and Ecemi{\c{s}}, M {\.I}hsan and Gaudiano, Paolo},
+  title        = {Distributed localization and mapping with a robotic swarm},
+  booktitle    = {International Workshop on Swarm Robotics},
+  year         = {2004},
+  pages        = {58--69},
+  organization = {Springer},
+  abstract     = {We describe a project where behaviors of robot swarms are designed and studied for use in a distributed mapping domain. Behav- iors are studied in both simulation and physical robots. We discuss the advantages and challenges of swarm robotics, in general and specific to our research. Software implementations and algorithms are introduced, as well as methodologies for the creation and assessment of swarm be- haviors.},
+}
+
+@InProceedings{hoff2010two,
+  author       = {Hoff, Nicholas R and Sagoff, Amelia and Wood, Robert J and Nagpal, Radhika},
+  title        = {Two foraging algorithms for robot swarms using only local communication},
+  booktitle    = {Robotics and Biomimetics (ROBIO), 2010 IEEE International Conference on},
+  year         = {2010},
+  pages        = {123--130},
+  organization = {IEEE},
+  abstract     = {Large collections of robots have the potential to perform tasks collectively using distributed control algorithms. These algorithms require communication between robots to allow the robots to coordinate their behavior and act as a collective. In this paper we describe two algorithms which allow coordination between robots, but do not require physical envi- ronment marks such as pheromones. Instead, these algorithms rely on simple, local, low–bandwidth, direct communication between robots. We describe the algorithms and measure their performance in worlds with and without obstacles.},
+}
+
 @Comment{jabref-meta: databaseType:bibtex;}
