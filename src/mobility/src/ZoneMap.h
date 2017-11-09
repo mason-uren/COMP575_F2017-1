@@ -7,13 +7,22 @@
 
 #include "Zone.h"
 
-class ZoneMap {
+class ZoneMap : public Zone {
 
     private:
+    //    Variables
         std::map<std::string, Zone> zone_map;
     public:
-        ZoneMap() {}
-
+    //    Constructor
+        ZoneMap () {
+            zone_map["a"] = Zone("a", zA);
+            zone_map["b"] = Zone("b", zB);
+            zone_map["c"] = Zone("c", zC);
+            zone_map["d"] = Zone("d", zD);
+        }
+    //    Functions
+        std::vector<std::string> getAvail();
+        std::string getClosest(std::vector<std::string>);
 
 };
 
