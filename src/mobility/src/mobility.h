@@ -80,6 +80,7 @@ void headingHandler(const std_msgs::Float64MultiArray::ConstPtr &message);
 std_msgs::String globalHeading ();
 void neighbors (int name);
 std_msgs::String localHeading (int name);
+std_msgs::String localPose (int name);
 
 typedef enum {
     ACHILLES = 0, AENEAS, AJAX, DIOMEDES, HECTOR, PARIS

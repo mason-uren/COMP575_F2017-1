@@ -141,7 +141,8 @@ void mobilityStateMachine(const ros::TimerEvent &)
             state_machine_msg.data = "TRANSLATING";//, " + converter.str();
 //            float angular_velocity = 0.2;
 //            float linear_velocity = 0.1;
-            double angular_velocity = TUNING_CONST * (rover_hash[rover].avg_local_theta - current_location.theta);
+//            double angular_velocity = TUNING_CONST * (rover_hash[rover].avg_local_theta - current_location.theta);
+            double angular_velocity = TUNING_CONST * (rover_hash[rover].avg_local_pose - current_location.theta);
             std::cout << "Angular velecity: " << angular_velocity << std::endl;
             float linear_velocity = 0;
             setVelocity(linear_velocity, angular_velocity);
@@ -308,6 +309,9 @@ void headingHandler(const std_msgs::Float64MultiArray::ConstPtr &message) {
     localAverageHeading.publish(lH);
     rover_hash[current_rover].avg_local_theta = std::strtod(lH.data.c_str(), &end);
     end = NULL; // clear pointer
+
+//    Call localPose
+
 }
 
 std_msgs::String globalHeading (){
@@ -376,6 +380,36 @@ std_msgs::String localHeading (int name) {
     snprintf(buf, 256, "%lf", lAH);
     content.data = string(buf);
     memset(buf, 0, 255); // Clear char array
+
+    return content;
+}
+
+std::msgs::String localPose (int name) {
+    char buf[256];
+    static const int arr[] = {0,0}; // Default bad values
+    std::vector<double> thetaG(arr, arr + sizeof(arr) / sizeof(arr[0]));
+    std_msgs::String content;
+    double lAP;
+    std::vector<double> rNeighb;
+
+//    Iterate through respective neighbors vector
+    for (std::vector<int>::iterator it = rover_hash[name].neighbors.begin(); it != rover_hash[name].neighbors.end(); ++it) {
+        rNeighb.push_back(*it);
+    }
+
+//    Iterate through neighboring rovers pose
+    for (std::vector<double>::iterator it = rNeighb.begin(); it != rNeighb.end(); ++it) {
+        thetaG.at(0) += rover_hash[*it].rover_pose.x;
+        thetaG.at(1) += rover_hash[*it].rover_pose.y;
+    }
+    thetaG.at(0) /= thetaG.size();
+    thetaG.at(1) /= thetaG.size();
+    lAP = std::atan2(thetaG[1], thetaG[0]);
+
+//    Format String
+    snprintf(buf, 256, "%lf", lAP);
+    content.data = string(buf);
+    memset(buf, 0, 255); // clear char array
 
     return content;
 }
