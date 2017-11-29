@@ -49,7 +49,7 @@ add_executable(
 		src/Zone.h
 		src/ZoneMap.cpp
 		src/ZoneMap.h
-)
+		src/Offset.h)
 
 add_dependencies(mobility ${catkin_EXPORTED_TARGETS})
 
