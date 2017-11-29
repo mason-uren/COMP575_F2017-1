@@ -86,9 +86,9 @@ void neighbors (int name);
 std_msgs::String localHeading (int name);
 std_msgs::String localPose (int name);
 
-typedef enum {
-    ACHILLES = 0, AENEAS, AJAX, DIOMEDES, HECTOR, PARIS
-} ROVER_NAME;
+//typedef enum {
+//    ACHILLES = 0, AENEAS, AJAX, DIOMEDES, HECTOR, PARIS
+//} ROVER_NAME;
 
 //typedef struct {
 //    std::vector<double> neighbor;
@@ -101,7 +101,6 @@ typedef enum {
 //    double theta;
 //    NEIGHBORS neighbors;
 //} ROVER_POSE;
-
 
 std::map<int, RoverPose> rover_hash;
 #endif //PROJECT_MOBILITY_H

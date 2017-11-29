@@ -37,6 +37,7 @@ random_numbers::RandomNumberGenerator *rng;
 string rover_name;
 char host[128];
 bool is_published_name = false;
+int rover;
 
 int simulation_mode = 0;
 float mobility_loop_time_step = 0.1;
@@ -67,6 +68,23 @@ int main(int argc, char **argv)
     {
         rover_name = hostName;
         cout << "No Name Selected. Default is: " << rover_name << endl;
+    }
+
+    /*
+     * Determine the agent we are operating on
+     */
+    if (rover_name == "achilles") {
+        rover = ACHILLES;
+    } else if (rover_name == "aeneas") {
+        rover = AENEAS;
+    } else if (rover_name == "ajax") {
+        rover = AJAX;
+    } else if (rover_name == "diomedes") {
+        rover = DIOMEDES;
+    } else if (rover_name == "hector") {
+        rover = HECTOR;
+    } else if (rover_name == "paris") {
+        rover = PARIS;
     }
     // NoSignalHandler so we can catch SIGINT ourselves and shutdown the node
     ros::init(argc, argv, (rover_name + "_MOBILITY"), ros::init_options::NoSigintHandler);
@@ -109,21 +127,6 @@ int main(int argc, char **argv)
 
 void mobilityStateMachine(const ros::TimerEvent &)
 {
-    int rover;
-    if (rover_name == "achilles") {
-        rover = ACHILLES;
-    } else if (rover_name == "aeneas") {
-        rover = AENEAS;
-    } else if (rover_name == "ajax") {
-        rover = AJAX;
-    } else if (rover_name == "diomedes") {
-        rover = DIOMEDES;
-    } else if (rover_name == "hector") {
-        rover = HECTOR;
-    } else if (rover_name == "paris") {
-        rover = PARIS;
-    }
-
     std_msgs::String state_machine_msg;
 
     if ((simulation_mode == 2 || simulation_mode == 3)) // Robot is in automode
@@ -138,6 +141,13 @@ void mobilityStateMachine(const ros::TimerEvent &)
         {
         case STATE_MACHINE_TRANSLATE:
         {
+            /*
+             * TODO: this is where we put the rover states code (implemenation that's written in local main.cpp)
+             */
+
+
+
+
             state_machine_msg.data = "TRANSLATING";//, " + converter.str();
 //            float angular_velocity = 0.2;
 //            float linear_velocity = 0.1;
@@ -225,6 +235,36 @@ void obstacleHandler(const std_msgs::UInt8::ConstPtr &message)
 
 void odometryHandler(const nav_msgs::Odometry::ConstPtr &message)
 {
+    double perceived_pose[] = {message->pose.pose.position.x, message->pose.pose.position.y};
+
+    switch  (rover) {
+        case ACHILLES: // Starting simulator offset (0,1)
+            current_location.x = perceived_pose[0];
+            current_location.y = perceived_pose[1] + 1;
+            break;
+        case AENEAS: // Starting simulator offest (-1,0)
+            current_location.x = perceived_pose[0] - 1;
+            current_location.y = perceived_pose[1];
+            break;
+        case AJAX: // Starting simulator offset (1,0)
+            current_location.x = perceived_pose[0] + 1;
+            current_location.y = perceived_pose[1];
+            break;
+        case DIOMEDES: // Starting simulator offset (1,1)
+            current_location.x = perceived_pose[0] + 1;
+            current_location.y = perceived_pose[1] + 1;
+            break;
+        case HECTOR: // Startign simulator offset (-1,-1)
+            current_location.x = perceived_pose[0] - 1;
+            current_location.y = perceived_pose[1] - 1;
+            break;
+        case PARIS: // Startign simulator offset (1, -1)
+            current_location.x = perceived_pose[0] + 1;
+//            current_location.y
+            break;
+        default:
+            std::cout << "ERROR: there are more agents than specificed (ODOMETRY HANDLER)." << std::endl;
+    }
     //Get (x,y) location directly from pose
     current_location.x = message->pose.pose.position.x;
     current_location.y = message->pose.pose.position.y;
