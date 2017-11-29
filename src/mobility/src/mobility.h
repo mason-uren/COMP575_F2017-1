@@ -10,6 +10,10 @@
 #include "RoverPose.h"
 #include "std_msgs/Float64MultiArray.h"
 
+#include "ZoneMap.h"
+#include "AgentMap.h"
+#include "Driveway.h"
+
 
 #define NEIGH_DIST 2
 #define TUNING_CONST 0.45

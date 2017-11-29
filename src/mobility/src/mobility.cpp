@@ -312,7 +312,7 @@ void headingHandler(const std_msgs::Float64MultiArray::ConstPtr &message) {
 
 //    Call localPose
     std_msgs::String lP = localPose((int)  message->data[0]);
-    rover_hash[current_rover].avg_local_pose = std::strod(lP.data.c_str(), &end);
+    rover_hash[current_rover].avg_local_pose = std::strtod(lP.data.c_str(), &end);
     end = NULL; // clear pointer
 }
 
@@ -386,7 +386,7 @@ std_msgs::String localHeading (int name) {
     return content;
 }
 
-std::msgs::String localPose (int name) {
+std_msgs::String localPose (int name) {
     char buf[256];
     static const int arr[] = {0,0}; // Default bad values
     std::vector<double> thetaG(arr, arr + sizeof(arr) / sizeof(arr[0]));
