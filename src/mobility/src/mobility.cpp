@@ -311,9 +311,13 @@ void headingHandler(const std_msgs::Float64MultiArray::ConstPtr &message) {
     end = NULL; // clear pointer
 
 //    Call localPose
+<<<<<<< HEAD
     std_msgs::String lP = localPose((int)  message->data[0]);
     rover_hash[current_rover].avg_local_pose = std::strtod(lP.data.c_str(), &end);
     end = NULL; // clear pointer
+=======
+
+>>>>>>> 6ff87806b94f5d0b532c50375c9aaf278b546bff
 }
 
 std_msgs::String globalHeading (){
