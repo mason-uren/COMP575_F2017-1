@@ -99,6 +99,16 @@ public:
     int getSize() {
         return (int) this->map.size();
     }
+    bool exists(T key) {
+        bool existence;
+        if (this->map.find(key) == this->map.end()) { // Key/value pair not found
+            existence = false;
+        }
+        else {
+            existence = true;
+        }
+        return existence;
+    }
 
 };
 
