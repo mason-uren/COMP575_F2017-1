@@ -11,7 +11,11 @@ typedef struct {
     int iteration;
     double x_avg;
     double y_avg;
-} LOCALIZATION_INIT;
+} LOC_INIT;
+
+typedef enum {
+    ANCHORING = 0, WEIGHTING, BEGINNING
+} LOC_SUBSTATE;
 
 class Localization {
 private:
@@ -19,10 +23,11 @@ private:
     geometry_msgs::Pose2D estimated_pose;
     geometry_msgs::Pose2D anchor_node;
     double weight;
-    LOCALIZATION_INIT localization_init;
+    LOC_INIT localization_init;
+    LOC_SUBSTATE substate;
 
 public:
-    Localization (geometry_msgs::Pose2D curr, geometry_msgs::Pose2D anchor) : anchor_node(anchor), weight(0) {
+    Localization (geometry_msgs::Pose2D curr, geometry_msgs::Pose2D anchor) : anchor_node(anchor), weight(0), substate(ANCHORING) {
         this->localization_init.iteration = 0;
         this->localization_init.x_avg = 0;
         this->localization_init.y_avg = 0;
@@ -73,7 +78,7 @@ public:
     double getWeight() {
         return this->weight;
     }
-    LOCALIZATION_INIT getInit() {
+    LOC_INIT getInit() {
         return this->localization_init;
     }
     std::vector<geometry_msgs::Pose2D> getMidpoints() {

@@ -14,7 +14,8 @@ private:
     STATE_ID state_id;
 
 public:
-    AgentStates () : state_id(STATE_INIT) {}
+    AgentStates (STATE_ID type) : state_id(type) {}
+    AgentStates () {}
 
     /*
      * Setters

@@ -14,7 +14,6 @@
 class Agent : private Localization, private AgentStates {
 private:
     int agent_ID;
-    AgentStates *state;
     geometry_msgs::Pose2D current_pose;
     Localization *localization;
     GOAL_ZONE_POSE goal_zone;
@@ -27,9 +26,9 @@ private:
     bool initTraversal;
 
 public:
-    Agent (int ID, geometry_msgs::Pose2D pose) :
-            agent_ID(ID), current_pose(pose), driveway_state(0), reachedCPS(false),
-            hasResource(false), initTraversal(false), state(new AgentStates()) {
+    Agent (int ID, geometry_msgs::Pose2D pose) : AgentStates(STATE_INIT), agent_ID(ID), current_pose(pose),
+                                                 driveway_state(0), reachedCPS(false), hasResource(false),
+                                                 initTraversal(false), avg_global_theta(0), avg_local_theta(0) {
         geometry_msgs::Pose2D temp_pose;
         std_msgs::String init_string;
         temp_pose.x = 0;
@@ -82,9 +81,6 @@ public:
      */
     int getID() {
         return this->agent_ID;
-    }
-    AgentStates *getState() {
-        return this->state;
     }
     geometry_msgs::Pose2D getCurrPose() {
         return this->current_pose;
