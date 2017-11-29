@@ -11,6 +11,10 @@
 #include "Zone.h"
 #include "AgentStates.h"
 
+typedef enum {
+    ACHILLES = 0, AENEAS, AJAX, DIOMEDES, HECTOR, PARIS
+} AGENT_ID;
+
 class Agent : private Localization, private AgentStates {
 private:
     int agent_ID;
