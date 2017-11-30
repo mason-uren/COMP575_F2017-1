@@ -14,7 +14,7 @@
 #define ERROR_MARGIN 0.1 // Radians
 
 template <typename T, class S>
-class ZoneMap : private Map<T,S>, private Zone {
+class ZoneMap : public Map<T,S>, private Zone {
 private:
     std::vector<std_msgs::String> availability;
     std_msgs::String name;

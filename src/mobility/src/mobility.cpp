@@ -127,6 +127,44 @@ int main(int argc, char **argv)
 
 void mobilityStateMachine(const ros::TimerEvent &)
 {
+    /*
+     * Determine which rover we have
+     */
+    Agent agent;
+    geometry_msgs::Pose2D agent_pose;
+    agent_pose.x = current_location.x;
+    agent_pose.y = current_location.y;
+    agent_pose.theta = current_location.theta;
+    switch (rover) {
+        case ACHILLES:
+            agent = Agent(ACHILLES, agent_pose);
+            break;
+        case AENEAS:
+            agent = Agent(AENEAS, agent_pose);
+            break;
+        case AJAX:
+            agent = Agent(AJAX, agent_pose);
+            break;
+        case DIOMEDES:
+            agent = Agent(DIOMEDES, agent_pose);
+            break;
+        case HECTOR:
+            agent = Agent(HECTOR, agent_pose);
+            break;
+        case PARIS:
+            agent = Agent(PARIS, agent_pose);
+            break;
+        default:
+            std::cout << "ERROR: bad agent ID." << std::endl;
+            break;
+    }
+    /*
+     * Add rover and update the map
+     * NOTE: It's ok to call both since exceptions are handled
+     */
+    agentMap->addToMap(agent.getID(), agent);
+    agentMap->updateMap(agent.getID(), agent);
+
     std_msgs::String state_machine_msg;
 
     if ((simulation_mode == 2 || simulation_mode == 3)) // Robot is in automode
