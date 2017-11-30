@@ -361,7 +361,7 @@ void sigintEventHandler(int sig)
 void messageHandler(const std_msgs::String::ConstPtr& message)
 {
 }
-void headingHandler(const std_msgs::Float64MultiArray::ConstPtr &message) {
+void headingHandler(const std_msgs::Float64MultiArray::ConstPtr &message) { // TODO: implement new frame to test to see if it works with old functionality
     int current_rover = (int) message->data[0];
     geometry_msgs::Pose2D msg_pose;
     msg_pose.x = message->data[1];
