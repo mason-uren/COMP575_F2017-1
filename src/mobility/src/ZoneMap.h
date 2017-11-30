@@ -33,22 +33,22 @@ public:
         new Map<T,S>();
         // Add zone A -> D
         for (int zones = 0; zones < 4; zones++) { // TODO: I don't like that ZoneMap size is effectively being set here
-            name.data.clear();
+            this->name.data.clear();
             switch (zones) {
                 case 0:
-                    name.data = "a";
+                    this->name.data = "a";
                     this->pose = this->defaultPose(-RZ, 0, 0); // TODO: value for theta needs to be picked
                     break;
                 case 1:
-                    name.data = "b";
+                    this->name.data = "b";
                     this->pose = this->defaultPose(0, RZ, 0); // TODO: value for theta needs to be picked
                     break;
                 case 2:
-                    name.data = "c";
+                    this->name.data = "c";
                     this->pose = this->defaultPose(RZ, 0, 0);  // TODO: value for theta needs to be picked
                     break;
                 case 3:
-                    name.data = "d";
+                    this->name.data = "d";
                     this->pose = this->defaultPose(0, -RZ, 0);  // TODO: value for theta needs to be picked
                     break;
                 case 4:
@@ -57,7 +57,7 @@ public:
                     std::cout << "ERROR: number of zones does not match number currently allowed (ZONEMAP)." << std::endl;
                     break;
             }
-            this->addToMap(name, Zone::Zone(name, pose));
+            this->addToMap(this->name, Zone::Zone(this->name, this->pose));
         }
     }
 

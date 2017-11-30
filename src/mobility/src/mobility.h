@@ -86,21 +86,13 @@ void neighbors (int name);
 std_msgs::String localHeading (int name);
 std_msgs::String localPose (int name);
 
-//typedef enum {
-//    ACHILLES = 0, AENEAS, AJAX, DIOMEDES, HECTOR, PARIS
-//} ROVER_NAME;
-
-//typedef struct {
-//    std::vector<double> neighbor;
-//} NEIGHBORS;
-
-//typedef struct rover_pose{
-//    int name;
-//    double x;
-//    double y;
-//    double theta;
-//    NEIGHBORS neighbors;
-//} ROVER_POSE;
+/*
+ * Global Variables
+ */
+ZoneMap<std_msgs::String, Zone> *zoneMap = new ZoneMap<std_msgs::String, Zone>();
+AgentMap<int, Agent> *agentMap = new AgentMap<int, Agent>();
+Driveway<int> *driveway = new Driveway<int>();
+InnerRadius<std_msgs::String, CriticalPoints> *innerRadius = new InnerRadius<std_msgs::String, CriticalPoints>();
 
 std::map<int, RoverPose> rover_hash;
 #endif //PROJECT_MOBILITY_H

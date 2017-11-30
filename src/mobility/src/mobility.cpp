@@ -151,8 +151,8 @@ void mobilityStateMachine(const ros::TimerEvent &)
             state_machine_msg.data = "TRANSLATING";//, " + converter.str();
 //            float angular_velocity = 0.2;
 //            float linear_velocity = 0.1;
-//            double angular_velocity = TUNING_CONST * (rover_hash[rover].avg_local_theta - current_location.theta);
-            double angular_velocity = TUNING_CONST * (rover_hash[rover].avg_local_pose - current_location.theta);
+            double angular_velocity = TUNING_CONST * (rover_hash[rover].avg_local_theta - current_location.theta);
+//            double angular_velocity = TUNING_CONST * (rover_hash[rover].avg_local_pose - current_location.theta);
             std::cout << "Angular velecity: " << angular_velocity << std::endl;
             float linear_velocity = 0;
             setVelocity(linear_velocity, angular_velocity);
@@ -260,14 +260,15 @@ void odometryHandler(const nav_msgs::Odometry::ConstPtr &message)
             break;
         case PARIS: // Startign simulator offset (1, -1)
             current_location.x = perceived_pose[0] + 1;
-//            current_location.y
+            current_location.y = perceived_pose[1] - 1;
             break;
         default:
             std::cout << "ERROR: there are more agents than specificed (ODOMETRY HANDLER)." << std::endl;
+            break;
     }
-    //Get (x,y) location directly from pose
-    current_location.x = message->pose.pose.position.x;
-    current_location.y = message->pose.pose.position.y;
+//    //Get (x,y) location directly from pose
+//    current_location.x = message->pose.pose.position.x;
+//    current_location.y = message->pose.pose.position.y;
 
     //Get theta rotation by converting quaternion orientation to pitch/roll/yaw
     tf::Quaternion q(message->pose.pose.orientation.x, message->pose.pose.orientation.y,
