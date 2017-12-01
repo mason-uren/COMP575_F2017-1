@@ -23,6 +23,7 @@ private:
     GOAL_ZONE_POSE goal_zone;
     double avg_global_theta;
     double avg_local_theta;
+    double avg_local_pose;
     std::vector<int> neighbors;
     int driveway_state; // Default no driveway state
     bool hasResource;
@@ -43,6 +44,7 @@ public:
         this->localization = new Localization(this->current_pose, temp_pose);
     }
     Agent () {};
+//    ~Agent() {}
 
     /*
      * Setters
@@ -61,11 +63,17 @@ public:
     void setLocalTheta(double theta) {
         this->avg_local_theta = theta;
     }
+    void setLocalPose(double theta) {
+        this->avg_local_pose = theta;
+    }
+    void addNeighbors (int nbr) {
+        this->neighbors.push_back(nbr);
+    }
     void setNeighbors(std::vector<int> neighb) {
-        // Clear current neighbors
-        this->neighbors.clear();
-        // Add in new neighbors vector
         this->neighbors = neighb;
+    }
+    void clearNeighbors() {
+        this->neighbors.clear();
     }
     void setDrivewayState(int state) {
         this->driveway_state = state;
@@ -79,6 +87,7 @@ public:
     void setInitTraversal(bool value) {
         this->initTraversal = value;
     }
+
 
     /*
      * Getters
@@ -94,6 +103,9 @@ public:
     }
     double getLocalTheta() {
         return this->avg_local_theta;
+    }
+    double getLocalPose() {
+        return this->avg_local_pose;
     }
     std::vector<int> getNeighbors() {
         return this->neighbors;
@@ -117,6 +129,7 @@ public:
     bool getInitTraversal() {
         return this->initTraversal;
     }
+
  };
 
 

@@ -44,7 +44,7 @@ float mobility_loop_time_step = 0.1;
 float status_publish_interval = 5;
 float kill_switch_timeout = 10;
 
-pose current_location;
+geometry_msgs::Pose2D current_location;
 
 int transitions_to_auto = 0;
 double time_stamp_transition_to_auto = 0.0;
@@ -53,6 +53,7 @@ double time_stamp_transition_to_auto = 0.0;
 #define STATE_MACHINE_TRANSLATE 0
 int state_machine_state = STATE_MACHINE_TRANSLATE;
 
+bool check = false;
 int main(int argc, char **argv)
 {
     gethostname(host, sizeof(host));
@@ -70,22 +71,6 @@ int main(int argc, char **argv)
         cout << "No Name Selected. Default is: " << rover_name << endl;
     }
 
-    /*
-     * Determine the agent we are operating on
-     */
-    if (rover_name == "achilles") {
-        rover = ACHILLES;
-    } else if (rover_name == "aeneas") {
-        rover = AENEAS;
-    } else if (rover_name == "ajax") {
-        rover = AJAX;
-    } else if (rover_name == "diomedes") {
-        rover = DIOMEDES;
-    } else if (rover_name == "hector") {
-        rover = HECTOR;
-    } else if (rover_name == "paris") {
-        rover = PARIS;
-    }
     // NoSignalHandler so we can catch SIGINT ourselves and shutdown the node
     ros::init(argc, argv, (rover_name + "_MOBILITY"), ros::init_options::NoSigintHandler);
     ros::NodeHandle mNH;
@@ -98,6 +83,29 @@ int main(int argc, char **argv)
     obstacleSubscriber = mNH.subscribe((rover_name + "/obstacle"), 10, obstacleHandler);
     odometrySubscriber = mNH.subscribe((rover_name + "/odom/ekf"), 10, odometryHandler);
     messageSubscriber = mNH.subscribe(("messages"), 10, messageHandler);
+    /*
+     * Determine the agent we are operating on
+     */
+    if (rover_name == "achilles") {
+        std::cout << "ACHILLES" << std::endl;
+        rover = ACHILLES;
+    } else if (rover_name == "aeneas") {
+        std::cout << "AENEAS" << std::endl;
+        rover = AENEAS;
+    } else if (rover_name == "ajax") {
+        std::cout << "AJAX" << std::endl;
+        rover = AJAX;
+    } else if (rover_name == "diomedes") {
+        std::cout << "DIOMEDES" << std::endl;
+        rover = DIOMEDES;
+    } else if (rover_name == "hector") {
+        std::cout << "HECTOR" << std::endl;
+        rover = HECTOR;
+    } else if (rover_name == "paris") {
+        std::cout << "PARIS" << std::endl;
+        rover = PARIS;
+    }
+
     /*
      * Added subsciber instantiation
      */
@@ -120,51 +128,19 @@ int main(int argc, char **argv)
     currentPose = mNH.advertise<std_msgs::Float64MultiArray>(("/currPose"), 10, true);
     globalAverageHeading = mNH.advertise<std_msgs::String>(("/global_heading"), 10, true);
     localAverageHeading = mNH.advertise<std_msgs::String>((rover_name + "/local_heading"), 10, true);
-    
+
+    /*
+     * Deallocate memory for agent
+     */
+//    delete agent;
+
     ros::spin();
     return EXIT_SUCCESS;
 }
 
 void mobilityStateMachine(const ros::TimerEvent &)
 {
-    /*
-     * Determine which rover we have
-     */
-    Agent agent;
-    geometry_msgs::Pose2D agent_pose;
-    agent_pose.x = current_location.x;
-    agent_pose.y = current_location.y;
-    agent_pose.theta = current_location.theta;
-    switch (rover) {
-        case ACHILLES:
-            agent = Agent(ACHILLES, agent_pose);
-            break;
-        case AENEAS:
-            agent = Agent(AENEAS, agent_pose);
-            break;
-        case AJAX:
-            agent = Agent(AJAX, agent_pose);
-            break;
-        case DIOMEDES:
-            agent = Agent(DIOMEDES, agent_pose);
-            break;
-        case HECTOR:
-            agent = Agent(HECTOR, agent_pose);
-            break;
-        case PARIS:
-            agent = Agent(PARIS, agent_pose);
-            break;
-        default:
-            std::cout << "ERROR: bad agent ID." << std::endl;
-            break;
-    }
-    /*
-     * Add rover and update the map
-     * NOTE: It's ok to call both since exceptions are handled
-     */
-    agentMap->addToMap(agent.getID(), agent);
-    agentMap->updateMap(agent.getID(), agent);
-
+    std::cout << "STATE MACHINE" << std::endl;
     std_msgs::String state_machine_msg;
 
     if ((simulation_mode == 2 || simulation_mode == 3)) // Robot is in automode
@@ -189,7 +165,8 @@ void mobilityStateMachine(const ros::TimerEvent &)
             state_machine_msg.data = "TRANSLATING";//, " + converter.str();
 //            float angular_velocity = 0.2;
 //            float linear_velocity = 0.1;
-            double angular_velocity = TUNING_CONST * (rover_hash[rover].avg_local_theta - current_location.theta);
+            double angular_velocity = TUNING_CONST * (agentMap->getValue(rover).getGlobalTheta() - current_location.theta);
+//            double angular_velocity = TUNING_CONST * (rover_hash[rover].avg_local_theta - current_location.theta);
 //            double angular_velocity = TUNING_CONST * (rover_hash[rover].avg_local_pose - current_location.theta);
             std::cout << "Angular velecity: " << angular_velocity << std::endl;
             float linear_velocity = 0;
@@ -224,6 +201,7 @@ void mobilityStateMachine(const ros::TimerEvent &)
     rover_pose.data.push_back(current_location.y);
     rover_pose.data.push_back(current_location.theta);
     currentPose.publish(rover_pose);
+    std::cout << "End publisher" << std::endl;
 
 
     stateMachinePublish.publish(state_machine_msg);
@@ -274,7 +252,6 @@ void obstacleHandler(const std_msgs::UInt8::ConstPtr &message)
 void odometryHandler(const nav_msgs::Odometry::ConstPtr &message)
 {
     double perceived_pose[] = {message->pose.pose.position.x, message->pose.pose.position.y};
-
     switch  (rover) {
         case ACHILLES: // Starting simulator offset (0,1)
             current_location.x = perceived_pose[0];
@@ -304,9 +281,6 @@ void odometryHandler(const nav_msgs::Odometry::ConstPtr &message)
             std::cout << "ERROR: there are more agents than specificed (ODOMETRY HANDLER)." << std::endl;
             break;
     }
-//    //Get (x,y) location directly from pose
-//    current_location.x = message->pose.pose.position.x;
-//    current_location.y = message->pose.pose.position.y;
 
     //Get theta rotation by converting quaternion orientation to pitch/roll/yaw
     tf::Quaternion q(message->pose.pose.orientation.x, message->pose.pose.orientation.y,
@@ -362,49 +336,86 @@ void messageHandler(const std_msgs::String::ConstPtr& message)
 {
 }
 void headingHandler(const std_msgs::Float64MultiArray::ConstPtr &message) { // TODO: implement new frame to test to see if it works with old functionality
+    std::cout << "HEADING HANDLER" << std::endl;
     int current_rover = (int) message->data[0];
     geometry_msgs::Pose2D msg_pose;
     msg_pose.x = message->data[1];
     msg_pose.y = message->data[2];
     msg_pose.theta = message->data[3];
 
-//    Create RoverPose
-    RoverPose rover_data(msg_pose);
-//    Populate Hash
-    rover_hash[current_rover] = rover_data;
+    // Create Agent
+    Agent agent;
+    switch (current_rover) {
+        case ACHILLES:
+            agent = Agent(ACHILLES, msg_pose);
+            break;
+        case AENEAS:
+            agent = Agent(AENEAS, msg_pose);
+            break;
+        case AJAX:
+            agent = Agent(AJAX, msg_pose);
+            break;
+        case DIOMEDES:
+            agent = Agent(DIOMEDES, msg_pose);
+            break;
+        case HECTOR:
+            agent = Agent(HECTOR, msg_pose);
+            break;
+        case PARIS:
+            agent = Agent(PARIS, msg_pose);
+            break;
+        default:
+            std::cout << "ERROR: bad rover value (HEADING HANDLER)" << std::endl;
+            break;
+    }
+    /*
+     * Add rover and update the map
+     */
+    if (!agentMap->exists(agent.getID())) {
+        agentMap->addToMap(agent.getID(), agent);
+
+    }
+    else{
+        agentMap->updateMap(agent.getID(), agent);
+    }
 
 //    Call globalHeading
     std_msgs::String gH = globalHeading();
     globalAverageHeading.publish(gH);
+    std::cout << "getValue of current rover -> " << agent.getID() << std::endl;
     char *end;
-    rover_hash[current_rover].avg_global_theta = std::strtod(gH.data.c_str(), &end); // Convert to double
+    agent.setGlobalTheta(std::strtod(gH.data.c_str(), &end));
+    agentMap->updateMap(agent.getID(), agent);
     end = NULL; // clear pointer
 
 //    Call neighbors
     neighbors(current_rover);
 
+
 //    Call localHeading
-    std_msgs::String lH = localHeading((int) message->data[0]);
-    localAverageHeading.publish(lH);
-    rover_hash[current_rover].avg_local_theta = std::strtod(lH.data.c_str(), &end);
-    end = NULL; // clear pointer
+//    std_msgs::String lH = localHeading(current_rover);
+//    localAverageHeading.publish(lH);
+//    agentMap->getValue(current_rover).setLocalTheta(std::strtod(lH.data.c_str(), &end));
+//    end = NULL; // clear pointer
 
 //    Call localPose
-    std_msgs::String lP = localPose((int)  message->data[0]);
-    rover_hash[current_rover].avg_local_pose = std::strtod(lP.data.c_str(), &end);
-    end = NULL; // clear pointers
+//    std_msgs::String lP = localPose(current_rover);
+//    agentMap->getValue(current_rover).setLocalPose(std::strtod(lP.data.c_str(), &end));
+//    end = NULL; // clear pointers
+
 }
 
-std_msgs::String globalHeading (){
+std_msgs::String globalHeading () {
     char buf[256];
     static const int arr[] = {0,0}; // Default bad values
     std::vector<double> thetaG(arr, arr + sizeof(arr) / sizeof(arr[0]));
     std_msgs::String content;
     double gAH;
-//    Iterate through hash and populate thetaG with theta values
-    for (std::map<int, RoverPose>::iterator it = rover_hash.begin(); it != rover_hash.end(); ++it){
-        thetaG.at(0) += cos(it->second.rover_pose.theta);
-        thetaG.at(1) += sin(it->second.rover_pose.theta);
+    // Iterate through map an populate 'thetaG' with theta values
+    std::map<int, Agent> agentMap_copy = agentMap->getMapCopy();
+    for (std::map<int, Agent>::iterator it = agentMap_copy.begin(); it != agentMap_copy.end(); ++it) {
+        thetaG.at(0) += cos(it->second.getCurrPose().theta);
+        thetaG.at(1) += sin(it->second.getCurrPose().theta);
     }
     thetaG.at(0) /= rover_hash.size();
     thetaG.at(1) /= rover_hash.size();
@@ -418,24 +429,29 @@ std_msgs::String globalHeading (){
     return content;
 }
 
+
 void neighbors (int name) {
-//    Empty neighbors vector
-    for (std::map<int, RoverPose>::iterator it = rover_hash.begin(); it != rover_hash.end(); ++it){
-        rover_hash[it->first].neighbors.clear();
+    // Make a copy of the map
+    std::map<int, Agent> agentMap_copy = agentMap->getMapCopy();
+//    std::vector<int> nbr_vec;
+    for (std::map<int, Agent>::iterator it = agentMap_copy.begin(); it !=agentMap_copy.end(); ++it) {
+        agentMap_copy[it->first].clearNeighbors();
     }
-//    Hold constant the current rover
-    RoverPose curr_rover = rover_hash[name];
-//    Iterate through remaining rovers
-    for (std::map<int, RoverPose>::iterator it = rover_hash.begin(); it != rover_hash.end(); ++it){
-        if ((it->first != name) && (hypot(curr_rover.rover_pose.x - it->second.rover_pose.x, curr_rover.rover_pose.y - it->second.rover_pose.y) < NEIGH_DIST)){
-            rover_hash[name].neighbors.push_back(it->first); // save the neighbors to the constant rover
-            rover_hash[it->first].neighbors.push_back(name); // save the neighbors to the other rover
+    // Hold constant the current rover
+    Agent curr_rover = agentMap->getValue(name);
+    // Iterate through remaining rovers
+    for (std::map<int, Agent>::iterator it = agentMap_copy.begin(); it != agentMap_copy.end(); ++it) {
+        if ((it->first != name) && (hypot(curr_rover.getCurrPose().x - it->second.getCurrPose().x, curr_rover.getCurrPose().y - it->second.getCurrPose().y) < NEIGH_DIST)) {
+            agentMap_copy[name].addNeighbors(it->first); // Save the neighbors to the constant rover
+            agentMap_copy[it->first].addNeighbors(name); // Save the neighbors to the other rover
         }
     }
+    agentMap->updateEntireMap(agentMap_copy);
 }
 
 
 std_msgs::String localHeading (int name) {
+    std::cout << "LOCAL HEADING" << std::endl;
     char buf[256];
     static const int arr[] = {0,0}; // Default bad values
     std::vector<double> thetaG(arr, arr + sizeof(arr) / sizeof(arr[0]));
@@ -443,15 +459,17 @@ std_msgs::String localHeading (int name) {
     double lAH;
     std::vector<double> rNeighb;
 
-//    Iterate through respective neighbors vector
-    for (std::vector<int>::iterator it = rover_hash[name].neighbors.begin(); it != rover_hash[name].neighbors.end(); ++it){
+    // Iteratte through respective neighbors vector
+    std::map<int, Agent> agentMap_copy = agentMap->getMapCopy();
+    std::vector<int> vec = agentMap_copy[name].getNeighbors();
+    for (std::vector<int>::iterator it = vec.begin(); it != vec.end(); ++it) {
+        std::cout << "Neighbors " << *it << std::endl;
         rNeighb.push_back(*it);
     }
-
-//    Iterator through neighboring rovers pose
+    // Iterator through neighboring rovers pose
     for (std::vector<double>::iterator it = rNeighb.begin(); it != rNeighb.end(); ++it){
-        thetaG.at(0) += cos(rover_hash[*it].rover_pose.theta);
-        thetaG.at(1) += sin(rover_hash[*it].rover_pose.theta);
+        thetaG.at(0) += cos(agentMap_copy[*it].getCurrPose().theta);
+        thetaG.at(1) += sin(agentMap_copy[*it].getCurrPose().theta);
     }
     thetaG.at(0) /= thetaG.size();
     thetaG.at(1) /= thetaG.size();
@@ -473,15 +491,16 @@ std_msgs::String localPose (int name) {
     double lAP;
     std::vector<double> rNeighb;
 
-//    Iterate through respective neighbors vector
-    for (std::vector<int>::iterator it = rover_hash[name].neighbors.begin(); it != rover_hash[name].neighbors.end(); ++it) {
+    // Iterate through respective neighbors vector
+    std::map<int, Agent> agentMap_copy = agentMap->getMapCopy();
+    for (std::vector<int>::iterator it = agentMap_copy[name].getNeighbors().begin(); it != agentMap_copy[name].getNeighbors().end(); ++it) {
         rNeighb.push_back(*it);
     }
-
-//    Iterate through neighboring rovers pose
+    std::cout << "After first loop" << std::endl;
+    // Iterate through neighboring rovers pose
     for (std::vector<double>::iterator it = rNeighb.begin(); it != rNeighb.end(); ++it) {
-        thetaG.at(0) += rover_hash[*it].rover_pose.x;
-        thetaG.at(1) += rover_hash[*it].rover_pose.y;
+        thetaG.at(0) += agentMap_copy[*it].getCurrPose().x;
+        thetaG.at(1) += agentMap_copy[*it].getCurrPose().y;
     }
     thetaG.at(0) /= thetaG.size();
     thetaG.at(1) /= thetaG.size();

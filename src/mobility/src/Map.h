@@ -79,8 +79,8 @@ public:
                 throw key;
             }
             return this->map[key];
-        } catch (std::map<T,S> temp_map) {
-            std::cout << "ERROR: could not get value; no matching key." << std::endl;
+        } catch (T key) {
+            std::cout << "ERROR: could not get value; no matching key '" << key << "'." << std::endl;
             return type;
         }
     }
