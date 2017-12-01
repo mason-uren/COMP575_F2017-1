@@ -13,10 +13,15 @@
 #include "ZoneMap.h"
 #include "AgentMap.h"
 #include "Driveway.h"
+#include "InnerRadius.h"
 
 
 #define NEIGH_DIST 2
 #define TUNING_CONST 0.45
+#define TRAVERSE_STD 0.15
+#define TRAVERSE_ERR 0.1
+#define ORIENTATION_ERR 0.05
+#define MAX_ITER 30
 
 /*
  * ROVER_REFS
@@ -85,6 +90,10 @@ std_msgs::String globalHeading ();
 void neighbors (int name);
 std_msgs::String localHeading (int name);
 std_msgs::String localPose (int name);
+double tangentialDist(geometry_msgs::Pose2D a, geometry_msgs::Pose2D b) {
+    return hypot((a.x - b.x), (a.y - b.y));
+}
+
 
 /*
  * Global Variables
@@ -94,5 +103,10 @@ AgentMap<int, Agent> *agentMap = new AgentMap<int, Agent>();
 Driveway<int> *driveway = new Driveway<int>();
 InnerRadius<std_msgs::String, CriticalPoints> *innerRadius = new InnerRadius<std_msgs::String, CriticalPoints>();
 
-std::map<int, RoverPose> rover_hash;
+typedef struct {
+    double linear;
+    double angular;
+} VELOCITY;
+
+//std::map<int, RoverPose> rover_hash;
 #endif //PROJECT_MOBILITY_H

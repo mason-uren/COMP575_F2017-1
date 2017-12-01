@@ -69,7 +69,13 @@ public:
             }
             this->addToMap(this->name, CriticalPoints::CriticalPoints(this->poseL, this->poseM, this->poseR));
         }
+    }
 
+    /*
+     * Getters
+     */
+    CriticalPoints getCP(T key) {
+        return this->getValue(key);
     }
 };
 

@@ -9,7 +9,6 @@
 #include "ActiveAgents.h"
 #include "WaitingAgents.h"
 #include "GarageAgents.h"
-#include "InnerRadius.h"
 
 typedef enum {
     INIT = 0, ACTIVE, WAITING, GARAGE, DELIVERY

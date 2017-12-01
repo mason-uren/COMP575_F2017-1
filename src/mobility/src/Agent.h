@@ -15,7 +15,7 @@ typedef enum {
     ACHILLES = 0, AENEAS, AJAX, DIOMEDES, HECTOR, PARIS
 } AGENT_ID;
 
-class Agent : private Localization, private AgentStates {
+class Agent : private Localization, public AgentStates {
 private:
     int agent_ID;
     geometry_msgs::Pose2D current_pose;
@@ -128,6 +128,9 @@ public:
     }
     bool getInitTraversal() {
         return this->initTraversal;
+    }
+    GOAL_ZONE_POSE getGZPose() {
+        return this->goal_zone;
     }
 
  };
