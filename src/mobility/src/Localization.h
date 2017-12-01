@@ -60,6 +60,16 @@ public:
         pose.y = yAvg;
         this->midpoints.push_back(pose);
     }
+    void advanceSubstate() {
+        switch (this->substate) {
+            case ANCHORING:
+                this->substate = WEIGHTING;
+                break;
+            case WEIGHTING:
+                this->substate = BEGINNING;
+                break;
+        }
+    }
 
     /*
      * Getters
@@ -78,6 +88,9 @@ public:
     }
     std::vector<geometry_msgs::Pose2D> getMidpoints() {
         return this->midpoints;
+    }
+    LOC_SUBSTATE getSubstate() {
+        return this->substate;
     }
 };
 

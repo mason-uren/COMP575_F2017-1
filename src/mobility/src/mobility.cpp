@@ -170,59 +170,76 @@ void mobilityStateMachine(const ros::TimerEvent &)
             int state = agent.getState();
             switch (state) {
                 case STATE_INIT: {
-                    /*
-                     * LOCALIZATION
-                     * NOTE: check if there is an improvement when rovers still avg anchor_node or are given it's location
-                     * TODO: need to mark confidence and anchor_pose
-                     */
-                    int iter = agent.getLocalization()->getIter();
-                    std::map<int, Agent> agentMap_copy = agentMap->getMapCopy();
-                    double x_avg = 0;
-                    double y_avg = 0;
-                    if (iter >= 0 && iter < MAX_ITER) {
-                        // Iterate through all agents except self
-                        for (std::map<int, Agent>::iterator it = agentMap_copy.begin();
-                             it != agentMap_copy.end(); ++it) {
-                            if (it->first != agent.getID()) { // We want the midpoints
-                                x_avg += it->second.getCurrPose().x / 2;
-                                y_avg += it->second.getCurrPose().y / 2;
+                    LOC_SUBSTATE init_sub = agent.getLocalization()->getSubstate();
+                    switch (init_sub) {
+                        /*
+                         * Average the poses of the agents and set a global reference point
+                         * 1) Calculate midpoint distance from other rovers and average MAX_ITER times
+                         * 2) Average midpoints
+                         * 3) Set anchor_node
+                         */
+                        case ANCHORING: {
+                            int iter = agent.getLocalization()->getIter();
+                            std::map<int, Agent> agentMap_copy = agentMap->getMapCopy();
+                            double x_avg = 0;
+                            double y_avg = 0;
+                            if (iter >= 0 && iter < MAX_ITER) {
+                                // Iterate through all agents except self
+                                for (std::map<int, Agent>::iterator it = agentMap_copy.begin();
+                                     it != agentMap_copy.end(); ++it) {
+                                    if (it->first != agent.getID()) { // We want the midpoints
+                                        x_avg += it->second.getCurrPose().x / 2;
+                                        y_avg += it->second.getCurrPose().y / 2;
+                                    }
+                                }
+                                x_avg /= agentMap_copy.size();
+                                y_avg /= agentMap_copy.size();
+                                agent.getLocalization()->addMidpoint(x_avg, y_avg);
                             }
+                            /*
+                             * Average the midpoints into an estimated pose
+                             */
+                            else if (iter == MAX_ITER) {
+                                std::vector<geometry_msgs::Pose2D> midpoints = agent.getLocalization()->getMidpoints();
+                                for (std::vector<geometry_msgs::Pose2D>::iterator it = midpoints.begin();
+                                     it != midpoints.end(); ++it) {
+                                    x_avg += it->x;
+                                    y_avg += it->y;
+                                }
+                                x_avg /= midpoints.size();
+                                y_avg /= midpoints.size();
+                                agent.getLocalization()->setEstimated(x_avg, y_avg);
+                            }
+                            /*
+                             * Set anchor pose
+                             */
+                            else if (iter == MAX_ITER + 1) {
+                                for (std::map<int, Agent>::iterator it = agentMap_copy.begin();
+                                     it != agentMap_copy.end(); ++it) {
+                                    x_avg += it->second.getLocalization()->getEstimated().x;
+                                    y_avg += it->second.getLocalization()->getEstimated().y;
+                                }
+                                x_avg /= agentMap_copy.size();
+                                y_avg /= agentMap_copy.size();
+                                agent.getLocalization()->setAnchor(x_avg, y_avg);
+                                agent.getLocalization()->advanceSubstate();
+                            }
+                            break;
                         }
-                        x_avg /= agentMap_copy.size();
-                        y_avg /= agentMap_copy.size();
-                        agent.getLocalization()->addMidpoint(x_avg, y_avg);
-                    }
                         /*
-                         * Average the midpoints into an estimated pose
+                         * Set confidence interval based around how far away the current rover is from the new anchor_node
+                         * NOTE: this should be roughly the same value for each agent
+                         * 1) Set confidence w.r.t. to anchor
+                         * 2) Advance substate
+                         * 3) Change agent state
                          */
-                    else if (iter == MAX_ITER) {
-                        std::vector<geometry_msgs::Pose2D> midpoints = agent.getLocalization()->getMidpoints();
-                        for (std::vector<geometry_msgs::Pose2D>::iterator it = midpoints.begin();
-                             it != midpoints.end(); ++it) {
-                            x_avg += it->x;
-                            y_avg += it->y;
-                        }
-                        x_avg /= midpoints.size();
-                        y_avg /= midpoints.size();
-                        agent.getLocalization()->setEstimated(x_avg, y_avg);
-                    }
-                        /*
-                         * Set anchor pose and assign confidence
-                         * TODO: need to assign confidence
-                         */
-                    else if (iter == MAX_ITER + 1) {
-                        for (std::map<int, Agent>::iterator it = agentMap_copy.begin();
-                             it != agentMap_copy.end(); ++it) {
-                            x_avg += it->second.getLocalization()->getEstimated().x;
-                            y_avg += it->second.getLocalization()->getEstimated().y;
-                        }
-                        x_avg /= agentMap_copy.size();
-                        y_avg /= agentMap_copy.size();
-                        iter++;
-                        agent.getLocalization()->setAnchor(x_avg, y_avg);
-
-                        // Set confidence
-                        agent.getLocalization()->setConfidence(dist_toAnchor);
+                        case WEIGHTING:
+                            agent.getLocalization()->setConfidence(dist_toAnchor);
+                            agent.getLocalization()->advanceSubstate();
+                            agent.setState(STATE_SEARCH);
+                            break;
+                        default:
+                            break;
                     }
                     agent.getLocalization()->incrmtIter();
                     agentMap->updateMap(agent.getID(), agent);
@@ -402,6 +419,7 @@ void mobilityStateMachine(const ros::TimerEvent &)
                 case STATE_DROP_OFF:
                     // Place cube or equivalent of that in this implementation
                     agent.setState(STATE_LEAVE_HOME);
+                    agent.setResource(false);
                     agentMap->updateMap(agent.getID(), agent);
                     break;
                 case STATE_LEAVE_HOME: {
