@@ -25,8 +25,7 @@
 
 
 #include "mobility.h"
-#include "Zone.h"
-#include "Localization.h"
+
 
 using namespace std;
 
@@ -170,19 +169,20 @@ void mobilityStateMachine(const ros::TimerEvent &)
             Agent agent = agentMap->getValue(rover);
             int state = agent.getState();
             switch (state) {
-                case STATE_INIT:
+                case STATE_INIT: {
                     /*
                      * LOCALIZATION
                      * NOTE: check if there is an improvement when rovers still avg anchor_node or are given it's location
-                     * TODO: need to mark weight and anchor_pose
+                     * TODO: need to mark confidence and anchor_pose
                      */
-                    int iter = agent.getLocalization()->getInit().iteration;
+                    int iter = agent.getLocalization()->getIter();
                     std::map<int, Agent> agentMap_copy = agentMap->getMapCopy();
                     double x_avg = 0;
                     double y_avg = 0;
                     if (iter >= 0 && iter < MAX_ITER) {
                         // Iterate through all agents except self
-                        for (std::map<int, Agent>::iterator it = agentMap_copy.begin(); it != agentMap_copy.end(); ++it) {
+                        for (std::map<int, Agent>::iterator it = agentMap_copy.begin();
+                             it != agentMap_copy.end(); ++it) {
                             if (it->first != agent.getID()) { // We want the midpoints
                                 x_avg += it->second.getCurrPose().x / 2;
                                 y_avg += it->second.getCurrPose().y / 2;
@@ -190,34 +190,29 @@ void mobilityStateMachine(const ros::TimerEvent &)
                         }
                         x_avg /= agentMap_copy.size();
                         y_avg /= agentMap_copy.size();
-                        iter++;
-                        // Save averaged anchor_pose
                         agent.getLocalization()->addMidpoint(x_avg, y_avg);
-                        agent.getLocalization()->setIter(iter);
-                        agentMap->updateMap(agent.getID(), agent);
                     }
-                    /*
-                     * Average the midpoints into an estimated pose
-                     */
+                        /*
+                         * Average the midpoints into an estimated pose
+                         */
                     else if (iter == MAX_ITER) {
                         std::vector<geometry_msgs::Pose2D> midpoints = agent.getLocalization()->getMidpoints();
-                        for (std::vector<geometry_msgs::Pose2D>::iterator it = midpoints.begin(); it != midpoints.end(); ++it) {
+                        for (std::vector<geometry_msgs::Pose2D>::iterator it = midpoints.begin();
+                             it != midpoints.end(); ++it) {
                             x_avg += it->x;
                             y_avg += it->y;
                         }
                         x_avg /= midpoints.size();
                         y_avg /= midpoints.size();
-                        iter++;
-                        agent.getLocalization()->setIter(iter);
                         agent.getLocalization()->setEstimated(x_avg, y_avg);
-                        agentMap->updateMap(agent.getID(), agent);
                     }
-                    /*
-                     * Set anchor pose and assign weight
-                     * TODO: need to assign weight
-                     */
+                        /*
+                         * Set anchor pose and assign confidence
+                         * TODO: need to assign confidence
+                         */
                     else if (iter == MAX_ITER + 1) {
-                        for (std::map<int, Agent>::iterator it = agentMap_copy.begin(); it != agentMap_copy.end(); ++it) {
+                        for (std::map<int, Agent>::iterator it = agentMap_copy.begin();
+                             it != agentMap_copy.end(); ++it) {
                             x_avg += it->second.getLocalization()->getEstimated().x;
                             y_avg += it->second.getLocalization()->getEstimated().y;
                         }
@@ -225,30 +220,34 @@ void mobilityStateMachine(const ros::TimerEvent &)
                         y_avg /= agentMap_copy.size();
                         iter++;
                         agent.getLocalization()->setAnchor(x_avg, y_avg);
-                        agent.getLocalization()->setIter(iter);
-                        agentMap->updateMap(agent.getID(), agent);
+
+                        // Set confidence
+                        agent.getLocalization()->setConfidence(dist_toAnchor);
                     }
+                    agent.getLocalization()->incrmtIter();
+                    agentMap->updateMap(agent.getID(), agent);
                     break;
+                }
                 case STATE_SEARCH:
                     break;
                 case STATE_PICK_UP:
                     break;
-                case STATE_FIND_HOME:
+                case STATE_FIND_HOME: {
                     gz = agent.getGZPose();
                     switch (agent.getDrivewayState()) {
-                        case INIT:
+                        case INIT: {
                             if (driveway->canEnter((DRIVEWAY_TYPE) agent.getDrivewayState())) {
                                 agent = driveway->addToDriveway(agent, ACTIVE);
                                 agentMap->updateMap(agent.getID(), agent);
-                            }
-                            else {
+                            } else {
                                 agent = driveway->addToDriveway(agent, WAITING);
                                 agentMap->updateMap(agent.getID(), agent);
                             }
                             vel.linear = 0;
                             vel.angular = 0;
                             break;
-                        case ACTIVE:
+                        }
+                        case ACTIVE: {
                             // Determine closest zone
                             zoneMap->checkAvailable();
                             agent = zoneMap->getClosestZone(agent);
@@ -278,20 +277,18 @@ void mobilityStateMachine(const ros::TimerEvent &)
                                     if (dist_cpL < 0.1) { // TODO: arbitrary value
                                         agent = driveway->moveAgent(agent, ACTIVE, GARAGE);
                                         agentMap->updateMap(agent.getID(), agent);
-                                    }
-                                    else if (current_location.theta < angle - TRAVERSE_ERR) { // Left turn; considering angles
+                                    } else if (current_location.theta <
+                                               angle - TRAVERSE_ERR) { // Left turn; considering angles
                                         angle = 0.025 / dist_toAnchor; // TODO: arbitrary value
-                                    }
-                                    else if (current_location.theta > angle + TRAVERSE_ERR) { // Right turn; considering angles
+                                    } else if (current_location.theta >
+                                               angle + TRAVERSE_ERR) { // Right turn; considering angles
                                         angle = -0.025 / dist_toAnchor; // TODO: arbitrary value
-                                    }
-                                    else {
+                                    } else {
                                         // Do nothing continue driving forward
                                         angle = current_location.theta;
                                     }
-                                    vel.linear = 0.2 * (dist_toZone - + (RZ / 2)); // TODO: arbitrary value
-                                }
-                                else {
+                                    vel.linear = 0.2 * (dist_toZone - +(RZ / 2)); // TODO: arbitrary value
+                                } else {
                                     /*
                                      * Default Traversal
                                      */
@@ -302,24 +299,21 @@ void mobilityStateMachine(const ros::TimerEvent &)
                                             agentMap->updateMap(agent.getID(), agent);
                                         }
                                         angle = -0.2 / dist_toAnchor; // TODO: arbitrary value
-                                    }
-                                    else if (dist_toAnchor <= CPR - TRAVERSE_STD) {
+                                    } else if (dist_toAnchor <= CPR - TRAVERSE_STD) {
                                         factor = CPR - TRAVERSE_STD - dist_toAnchor;
                                         angle = (-0.1 / dist_toAnchor) * factor; // TODO: arbitrary value
-                                    }
-                                    else if (dist_toAnchor >= CPR + TRAVERSE_STD) {
+                                    } else if (dist_toAnchor >= CPR + TRAVERSE_STD) {
                                         factor = dist_toAnchor - CPR - TRAVERSE_ERR;
                                         angle = (0.1 / dist_toAnchor) * factor; // TODO: arbitrary value
-                                    }
-                                    else {
+                                    } else {
                                         angle = 0.1 / dist_toAnchor; // Need to continually turn toward goal poze
                                     }
                                     vel.linear = 0.2 * dist_toZone; // TODO: arbitrary value
                                 }
                             }
-                            /*
-                             * Goal zone is right in front
-                             */
+                                /*
+                                 * Goal zone is right in front
+                                 */
                             else {
                                 if (dist_toZone < 0.1) {
                                     agent = driveway->moveAgent(agent, ACTIVE, GARAGE);
@@ -327,11 +321,10 @@ void mobilityStateMachine(const ros::TimerEvent &)
                                 }
                                 if (current_location.theta < angle - TRAVERSE_ERR) { // Left turn; considering angles
                                     angle = 0.025 / dist_toAnchor; // TODO: arbitrary value
-                                }
-                                else if (current_location.theta > angle + TRAVERSE_ERR) { // Right turn; considering angles
+                                } else if (current_location.theta >
+                                           angle + TRAVERSE_ERR) { // Right turn; considering angles
                                     angle = -0.025 / dist_toAnchor; // TODO: arbitrary value
-                                }
-                                else {
+                                } else {
                                     // Do nothing continue driving forward
                                     angle = current_location.theta;
                                 }
@@ -339,27 +332,28 @@ void mobilityStateMachine(const ros::TimerEvent &)
                             }
                             vel.angular = angle;
                             break;
-                        /*
-                         * Check if the rover is allowed to enter the driveway
-                         */
-                        case WAITING:
+                        }
+                            /*
+                             * Check if the rover is allowed to enter the driveway
+                             */
+                        case WAITING: {
                             if (driveway->canEnter((DRIVEWAY_TYPE) agent.getDrivewayState())) {
                                 agent = driveway->moveAgent(agent, WAITING, ACTIVE);
                                 agentMap->updateMap(agent.getID(), agent);
                             }
                             break;
-                        /*
-                         * We need to turn the rover to face home
-                         */
-                        case GARAGE:
+                        }
+                            /*
+                             * We need to turn the rover to face home
+                             */
+                        case GARAGE: {
                             angle = zoneMap->angleCalc(gz.goal_pose, current_location);
                             if (current_location.theta < angle - ORIENTATION_ERR) { // Left turn; considering angles
                                 angle = 0.2 / dist_toAnchor; // TODO: arbitrary value
-                            }
-                            else if (current_location.theta > angle + ORIENTATION_ERR) { // Right turn; considering angles
+                            } else if (current_location.theta >
+                                       angle + ORIENTATION_ERR) { // Right turn; considering angles
                                 angle = -0.2 / dist_toAnchor; // TODO: arbitrary value
-                            }
-                            else {
+                            } else {
                                 if (driveway->canEnter((DRIVEWAY_TYPE) agent.getDrivewayState())) {
                                     agent = driveway->moveAgent(agent, GARAGE, DELIVERY);
                                     agentMap->updateMap(agent.getID(), agent);
@@ -368,7 +362,8 @@ void mobilityStateMachine(const ros::TimerEvent &)
                             vel.linear = 0.001;
                             vel.angular = angle;
                             break;
-                        case DELIVERY:
+                        }
+                        case DELIVERY: {
                             /*
                              * The agent has reached the drop off point
                              * 1) Transition to DROP_OFF, which should have no properties except to drop the cube
@@ -382,15 +377,13 @@ void mobilityStateMachine(const ros::TimerEvent &)
                                 // Pass to DROP_OFF
                                 agent.setState(STATE_DROP_OFF);
                                 agentMap->updateMap(agent.getID(), agent);
-                            }
-                            else {
+                            } else {
                                 if (current_location.theta < angle - TRAVERSE_ERR) { // Left turn; considering angles
                                     angle = 0.05 / dist_toAnchor; // TODO: arbitrary value
-                                }
-                                else if (current_location.theta > angle + TRAVERSE_ERR) { // Right turn; considering angles
+                                } else if (current_location.theta >
+                                           angle + TRAVERSE_ERR) { // Right turn; considering angles
                                     angle = -0.05 / dist_toAnchor; // TODO: arbitrary value
-                                }
-                                else {
+                                } else {
                                     // Do nothing continue driving forward
                                     angle = current_location.theta;
                                 }
@@ -398,10 +391,12 @@ void mobilityStateMachine(const ros::TimerEvent &)
                             }
                             vel.angular = angle;
                             break;
+                        }
                         default:
                             break;
                     }
                     break;
+                }
                 case STATE_OBSTACLE_AVOIDANCE:
                     break;
                 case STATE_DROP_OFF:
@@ -409,23 +404,23 @@ void mobilityStateMachine(const ros::TimerEvent &)
                     agent.setState(STATE_LEAVE_HOME);
                     agentMap->updateMap(agent.getID(), agent);
                     break;
-                case STATE_LEAVE_HOME:
+                case STATE_LEAVE_HOME: {
                     gz = agent.getGZPose();
                     angle = zoneMap->angleCalc(gz.goal_pose, current_location);
-                    if (dist_toAnchor > R3 + TRAVERSE_ERR) { // EXIT state <--- need to wrap up the code into different states
+                    if (dist_toAnchor >
+                        R3 + TRAVERSE_ERR) { // EXIT state <--- need to wrap up the code into different states
                         agent.setInitTraversal(false);
                         agent.setState(STATE_SEARCH);
                         agentMap->updateMap(agent.getID(), agent);
-                    }
-                    else if (current_location.theta < angle - TRAVERSE_ERR) { // Left turn; considering angles
+                    } else if (current_location.theta < angle - TRAVERSE_ERR) { // Left turn; considering angles
                         angle = 0.025 / dist_toAnchor;
-                    }
-                    else if (current_location.theta > angle + TRAVERSE_ERR) { // Right turn; considering angles
+                    } else if (current_location.theta > angle + TRAVERSE_ERR) { // Right turn; considering angles
                         angle = -0.025 / dist_toAnchor;
                     }
                     vel.linear = -0.2 * dist_toAnchor;
                     vel.angular = angle;
                     break;
+                }
                 default:
                     std::cout << "ERROR: bad agent state." << std::endl;
                     break;
@@ -689,8 +684,8 @@ std_msgs::String globalHeading () {
         thetaG.at(0) += cos(it->second.getCurrPose().theta);
         thetaG.at(1) += sin(it->second.getCurrPose().theta);
     }
-    thetaG.at(0) /= rover_hash.size();
-    thetaG.at(1) /= rover_hash.size();
+    thetaG.at(0) /= thetaG.size();
+    thetaG.at(1) /= thetaG.size();
     gAH = std::atan2(thetaG[1], thetaG[0]);
 
 //    Format string

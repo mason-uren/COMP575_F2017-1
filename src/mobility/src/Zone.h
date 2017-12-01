@@ -14,18 +14,18 @@
 #define R3 1.769
 
 typedef struct {
-    std_msgs::String zone_ID;
+    std::string zone_ID;
     bool traverse;
     geometry_msgs::Pose2D goal_pose;
 } GOAL_ZONE_POSE;
 
 class Zone {
 private:
-    std_msgs::String z_name;
+    std::string z_name;
     geometry_msgs::Pose2D z_pose;
     bool z_held;
 public:
-    Zone (std_msgs::String name, geometry_msgs::Pose2D location) :
+    Zone (std::string name, geometry_msgs::Pose2D location) :
         z_name(name), z_pose(location), z_held(false) {}
     Zone () : z_held(false) {};
 
@@ -42,7 +42,7 @@ public:
     bool getOccupancy() {
         return this->z_held;
     }
-    std_msgs::String getName() {
+    std::string getName() {
         return this->z_name;
     }
     geometry_msgs::Pose2D getPose() {

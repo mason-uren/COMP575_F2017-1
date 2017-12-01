@@ -8,7 +8,7 @@
 #include "AgentQueueInterface.h"
 
 template <typename T>
-class WaitingAgents : protected AgentQueueInterface<T> {
+class WaitingAgents : public AgentQueueInterface<T> {
 public:
     WaitingAgents () {
         new AgentQueueInterface<T>();

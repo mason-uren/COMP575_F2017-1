@@ -98,10 +98,10 @@ double tangentialDist(geometry_msgs::Pose2D a, geometry_msgs::Pose2D b) {
 /*
  * Global Variables
  */
-ZoneMap<std_msgs::String, Zone> *zoneMap = new ZoneMap<std_msgs::String, Zone>();
+ZoneMap<std::string, Zone> *zoneMap = new ZoneMap<std::string, Zone>();
 AgentMap<int, Agent> *agentMap = new AgentMap<int, Agent>();
 Driveway<int> *driveway = new Driveway<int>();
-InnerRadius<std_msgs::String, CriticalPoints> *innerRadius = new InnerRadius<std_msgs::String, CriticalPoints>();
+InnerRadius<std::string, CriticalPoints> *innerRadius = new InnerRadius<std::string, CriticalPoints>();
 
 typedef struct {
     double linear;

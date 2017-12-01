@@ -73,16 +73,17 @@ public:
      * Getters
      */
     S getValue(T key) {
-        S type;
-        try {
-            if (this->map.find(key) == this->map.end()) { // If key doesn't exist
-                throw key;
-            }
-            return this->map[key];
-        } catch (T key) {
-            std::cout << "ERROR: could not get value; no matching key '" << key << "'." << std::endl;
-            return type;
-        }
+        return this->map[key];
+//        S type;
+//        try {
+//            if (this->map.find(key) == this->map.end()) { // If key doesn't exist
+//                throw key;
+//            }
+//            return this->map[key];
+//        } catch (T key) {
+//            std::cout << "ERROR: could not get value; no matching key '" << key << "'." << std::endl;
+//            return type;
+//        }
     }
     std::map<T,S> getMapCopy() {
         std::map<T,S> map_copy = this->map;

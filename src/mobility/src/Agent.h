@@ -35,12 +35,12 @@ public:
                                                  driveway_state(0), reachedCPS(false), hasResource(false),
                                                  initTraversal(false), avg_global_theta(0), avg_local_theta(0) {
         geometry_msgs::Pose2D temp_pose;
-        std_msgs::String init_string;
+        std::string init_string;
         temp_pose.x = 0;
         temp_pose.y = 0;
         temp_pose.theta = 0;
-        init_string.data = "N/A";
-        this->goal_zone = (GOAL_ZONE_POSE) {init_string, true, temp_pose};
+//        init_string.data = "N/A";
+        this->goal_zone = (GOAL_ZONE_POSE) {"N/A", true, temp_pose};
         this->localization = new Localization(this->current_pose, temp_pose);
     }
     Agent () {};
@@ -52,7 +52,7 @@ public:
     void setCurrPose(geometry_msgs::Pose2D p) {
         this->current_pose = p;
     }
-    void setGZPose(std_msgs::String name, bool traversal, geometry_msgs::Pose2D gz) {
+    void setGZPose(std::string name, bool traversal, geometry_msgs::Pose2D gz) {
         this->goal_zone.zone_ID = name;
         this->goal_zone.traverse = traversal;
         this->goal_zone.goal_pose = gz;

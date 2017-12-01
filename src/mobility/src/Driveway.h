@@ -15,16 +15,15 @@ typedef enum {
 } DRIVEWAY_TYPE;
 
 template <typename T>
-class Driveway : private  ActiveAgents<T>, private WaitingAgents<T>,
-                    private  GarageAgents<T> {
+class Driveway : private  ActiveAgents<T>, private WaitingAgents<T>, private  GarageAgents<T> {
 private:
     double r_out;
     bool exit;
     int delivery;
     int spins;
-    ActiveAgents<T> *activeAgents;
-    WaitingAgents<T> *waitingAgents;
-    GarageAgents<T> *garageAgents;
+    ActiveAgents<int> *activeAgents;
+    WaitingAgents<int> *waitingAgents;
+    GarageAgents<int> *garageAgents;
 
 public:
     Driveway () : activeAgents(new ActiveAgents<int>()), waitingAgents(new WaitingAgents<int>()),
@@ -149,6 +148,6 @@ public:
     }
 };
 
-#include "Driveway.cpp"
+//#include "Driveway.cpp"
 
 #endif //PROJECT_DRIVEWAY_H
