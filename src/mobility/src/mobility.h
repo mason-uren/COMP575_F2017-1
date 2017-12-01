@@ -102,6 +102,8 @@ ZoneMap<std::string, Zone> *zoneMap = new ZoneMap<std::string, Zone>();
 AgentMap<int, Agent> *agentMap = new AgentMap<int, Agent>();
 Driveway<int> *driveway = new Driveway<int>();
 InnerRadius<std::string, CriticalPoints> *innerRadius = new InnerRadius<std::string, CriticalPoints>();
+geometry_msgs::Pose2D search_pose;
+Agent *agent;
 
 typedef struct {
     double linear;

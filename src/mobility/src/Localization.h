@@ -22,7 +22,10 @@ private:
 
 public:
     Localization (geometry_msgs::Pose2D curr, geometry_msgs::Pose2D anchor) :
-            anchor_node(anchor), confidence(0), substate(ANCHORING), iteration(0) {}
+            anchor_node(anchor), confidence(0), iteration(0) {
+        this->substate = ANCHORING;
+    }
+//            , substate(ANCHORING) {}
     Localization () {}
 
     /*
@@ -69,6 +72,9 @@ public:
                 this->substate = BEGINNING;
                 break;
         }
+    }
+    void setSubstate (LOC_SUBSTATE sub) {
+        this->substate = sub;
     }
 
     /*
