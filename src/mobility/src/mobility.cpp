@@ -204,6 +204,7 @@ void mobilityStateMachine(const ros::TimerEvent &)
 //                                agentMap->getValue(rover).getLocalization()->addMidpoint(x_avg, y_avg);
                                 agent->getLocalization()->addMidpoint(x_avg, y_avg);
                                 std::cout << "Midpoint Size = " << agentMap->getValue(rover).getLocalization()->getMidpoints().size() << std::endl;
+                                agent->getLocalization()->incrmtIter();
                             }
                             /*
                              * Average the midpoints into an estimated pose
@@ -220,6 +221,7 @@ void mobilityStateMachine(const ros::TimerEvent &)
                                 y_avg /= midpoints.size();
                                 agent->getLocalization()->setEstimated(x_avg, y_avg);
                                 std::cout << "Estimated Pose = {" << agent->getLocalization()->getEstimated().x << ", " << agent->getLocalization()->getEstimated().y << "}" << std::endl;
+                                agent->getLocalization()->incrmtIter();
                             }
                             /*
                              * Set anchor pose
@@ -237,6 +239,7 @@ void mobilityStateMachine(const ros::TimerEvent &)
                                 std::cout << "SUBSTATE <== " << agent->getLocalization()->getSubstate() << std::endl;
                                 agent->getLocalization()->advanceSubstate();
                                 std::cout << "SUBSTATE <== " << agent->getLocalization()->getSubstate() << std::endl;
+                                agent->getLocalization()->incrmtIter();
                             }
                             break;
                         }
@@ -259,7 +262,6 @@ void mobilityStateMachine(const ros::TimerEvent &)
                             break;
                     }
                     std::cout << "Incriment" << std::endl;
-                    agent->getLocalization()->incrmtIter();
                     std::cout << "ITER <== " << agent->getLocalization()->getIter() << std::endl;
                     break;
                 }
@@ -267,16 +269,27 @@ void mobilityStateMachine(const ros::TimerEvent &)
                  * Drive rovers in outward radial pattern from their initial positions
                  */
                 case STATE_SEARCH: {
-                    std::cout << "STATE -> INTI" << std::endl;
+                    std::cout << "STATE -> SEARCH" << std::endl;
                     if (agent->getLocalization()->getIter() == 0) {
+                        std::cout << "Search Pose: X <- " << search_pose.x << ", Y <- " << search_pose.y << std::endl;
                         search_pose.x = current_location.x * 3;
                         search_pose.y = current_location.y * 3;
                         agent->getLocalization()->incrmtIter();
                     }
                     angle = zoneMap->angleCalc(search_pose, current_location);
                     angle = angles::shortest_angular_distance(angle, current_location.theta);
-                    vel.linear = 0.1;
-                    vel.angular = TUNING_CONST * angle;
+                    double dist = tangentialDist(current_location, search_pose);
+                    if (dist < 0.1) {
+                        vel.linear = 0;
+                    }
+                    else {
+                        vel.linear = 0.01 * dist;
+                        vel.angular = 0.08 * angle;
+                    }
+                    std::cout << "Search Pose: X <- " << search_pose.x << ", Y <- " << search_pose.y << std::endl;
+                    std::cout << "Dist to goal: " << dist << std::endl;
+                    std::cout << "Angle to goal: " << angle << std::endl;
+
 
 //                    int ID = agent.getID();
 //                    switch (ID) {
