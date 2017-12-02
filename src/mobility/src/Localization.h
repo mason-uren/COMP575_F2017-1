@@ -16,16 +16,14 @@ private:
     std::vector<geometry_msgs::Pose2D> midpoints;
     geometry_msgs::Pose2D estimated_pose;
     geometry_msgs::Pose2D anchor_node;
+    bool anchor_set;
     double confidence;
     int iteration;
     LOC_SUBSTATE substate;
 
 public:
     Localization (geometry_msgs::Pose2D curr, geometry_msgs::Pose2D anchor) :
-            anchor_node(anchor), confidence(0), iteration(0) {
-        this->substate = ANCHORING;
-    }
-//            , substate(ANCHORING) {}
+            anchor_node(anchor), confidence(0), iteration(0), substate(ANCHORING), anchor_set(false) {}
     Localization () {}
 
     /*
@@ -76,6 +74,9 @@ public:
     void setSubstate (LOC_SUBSTATE sub) {
         this->substate = sub;
     }
+    void initAnchor() {
+        this->anchor_set = true;
+    }
 
     /*
      * Getters
@@ -97,6 +98,9 @@ public:
     }
     LOC_SUBSTATE getSubstate() {
         return this->substate;
+    }
+    bool isAnchor() {
+        return this->anchor_set;
     }
 };
 

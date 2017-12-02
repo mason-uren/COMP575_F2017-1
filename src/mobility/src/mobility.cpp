@@ -240,6 +240,7 @@ void mobilityStateMachine(const ros::TimerEvent &)
                                 agent->getLocalization()->advanceSubstate();
                                 std::cout << "SUBSTATE <== " << agent->getLocalization()->getSubstate() << std::endl;
                                 agent->getLocalization()->incrmtIter();
+                                agent->getLocalization()->initAnchor();
                             }
                             break;
                         }
@@ -270,6 +271,7 @@ void mobilityStateMachine(const ros::TimerEvent &)
                  */
                 case STATE_SEARCH: {
                     std::cout << "STATE -> SEARCH" << std::endl;
+                    std::cout << "CURRENT LOCATION ---> {" << current_location.x << ", " << current_location.y << "}" << std::endl;
                     if (agent->getLocalization()->getIter() == 0) {
                         std::cout << "Search Pose: X <- " << search_pose.x << ", Y <- " << search_pose.y << std::endl;
                         search_pose.x = current_location.x * 3;
@@ -277,14 +279,14 @@ void mobilityStateMachine(const ros::TimerEvent &)
                         agent->getLocalization()->incrmtIter();
                     }
                     angle = zoneMap->angleCalc(search_pose, current_location);
-                    angle = angles::shortest_angular_distance(angle, current_location.theta);
                     double dist = tangentialDist(current_location, search_pose);
-                    if (dist < 0.1) {
+                    if (dist < 0.35) {
                         vel.linear = 0;
+                        vel.angular = 0;
                     }
                     else {
-                        vel.linear = 0.01 * dist;
-                        vel.angular = 0.08 * angle;
+                        vel.linear = 0.1 * dist;
+                        vel.angular = 0.2 * (angle - current_location.theta);
                     }
                     std::cout << "Search Pose: X <- " << search_pose.x << ", Y <- " << search_pose.y << std::endl;
                     std::cout << "Dist to goal: " << dist << std::endl;
@@ -605,35 +607,77 @@ void obstacleHandler(const std_msgs::UInt8::ConstPtr &message)
 
 void odometryHandler(const nav_msgs::Odometry::ConstPtr &message)
 {
+    // TODO: we need to change our offset based around our frame of reference once anchor_node is established
     double perceived_pose[] = {message->pose.pose.position.x, message->pose.pose.position.y};
-    switch  (rover) {
-        case ACHILLES: // Starting simulator offset (0,1)
-            current_location.x = perceived_pose[0];
-            current_location.y = perceived_pose[1] + 1;
-            break;
-        case AENEAS: // Starting simulator offest (-1,0)
-            current_location.x = perceived_pose[0] - 1;
-            current_location.y = perceived_pose[1];
-            break;
-        case AJAX: // Starting simulator offset (1,0)
-            current_location.x = perceived_pose[0] + 1;
-            current_location.y = perceived_pose[1];
-            break;
-        case DIOMEDES: // Starting simulator offset (1,1)
-            current_location.x = perceived_pose[0] + 1;
-            current_location.y = perceived_pose[1] + 1;
-            break;
-        case HECTOR: // Startign simulator offset (-1,-1)
-            current_location.x = perceived_pose[0] - 1;
-            current_location.y = perceived_pose[1] - 1;
-            break;
-        case PARIS: // Startign simulator offset (1, -1)
-            current_location.x = perceived_pose[0] + 1;
-            current_location.y = perceived_pose[1] - 1;
-            break;
-        default:
-            std::cout << "ERROR: there are more agents than specificed (ODOMETRY HANDLER)." << std::endl;
-            break;
+    /*
+     * Has the anchor_node been created
+     */
+    if (agent->getLocalization()->isAnchor()) {
+        geometry_msgs::Pose2D pose;
+        pose.x = message->pose.pose.position.x;
+        pose.y = message->pose.pose.position.y;
+        double dist_toAnchor = tangentialDist(pose, agent->getLocalization()->getAnchor());
+        agent->getLocalization()->setConfidence(dist_toAnchor);
+        switch  (rover) {
+            case ACHILLES: // Starting simulator offset (0,1)
+                current_location.x = perceived_pose[0];
+                current_location.y = perceived_pose[1] + 1;
+                break;
+            case AENEAS: // Starting simulator offest (-1,0)
+                current_location.x = perceived_pose[0] - 1;
+                current_location.y = perceived_pose[1];
+                break;
+            case AJAX: // Starting simulator offset (1,0)
+                current_location.x = perceived_pose[0] + 1;
+                current_location.y = perceived_pose[1];
+                break;
+            case DIOMEDES: // Starting simulator offset (1,1)
+                current_location.x = perceived_pose[0] + 1;
+                current_location.y = perceived_pose[1] + 1;
+                break;
+            case HECTOR: // Startign simulator offset (-1,-1)
+                current_location.x = perceived_pose[0] - 1;
+                current_location.y = perceived_pose[1] - 1;
+                break;
+            case PARIS: // Startign simulator offset (1, -1)
+                current_location.x = perceived_pose[0] + 1;
+                current_location.y = perceived_pose[1] - 1;
+                break;
+            default:
+                std::cout << "ERROR: there are more agents than specificed (ODOMETRY HANDLER)." << std::endl;
+                break;
+        }
+    }
+    else {
+        switch (rover) {
+            case ACHILLES: // Starting simulator offset (0,1)
+                current_location.x = perceived_pose[0];
+                current_location.y = perceived_pose[1] + 1;
+                break;
+            case AENEAS: // Starting simulator offest (-1,0)
+                current_location.x = perceived_pose[0] - 1;
+                current_location.y = perceived_pose[1];
+                break;
+            case AJAX: // Starting simulator offset (1,0)
+                current_location.x = perceived_pose[0] + 1;
+                current_location.y = perceived_pose[1];
+                break;
+            case DIOMEDES: // Starting simulator offset (1,1)
+                current_location.x = perceived_pose[0] + 1;
+                current_location.y = perceived_pose[1] + 1;
+                break;
+            case HECTOR: // Startign simulator offset (-1,-1)
+                current_location.x = perceived_pose[0] - 1;
+                current_location.y = perceived_pose[1] - 1;
+                break;
+            case PARIS: // Startign simulator offset (1, -1)
+                current_location.x = perceived_pose[0] + 1;
+                current_location.y = perceived_pose[1] - 1;
+                break;
+            default:
+                std::cout << "ERROR: there are more agents than specificed (ODOMETRY HANDLER)." << std::endl;
+                break;
+        }
     }
 
     //Get theta rotation by converting quaternion orientation to pitch/roll/yaw
