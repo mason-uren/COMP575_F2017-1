@@ -91,6 +91,7 @@ int main(int argc, char **argv)
     if (rover_name == "achilles") {
         std::cout << "ACHILLES" << std::endl;
         rover = ACHILLES;
+
     } else if (rover_name == "aeneas") {
         std::cout << "AENEAS" << std::endl;
         rover = AENEAS;
@@ -167,6 +168,7 @@ void mobilityStateMachine(const ros::TimerEvent &)
             VELOCITY vel = {0, 0};
             geometry_msgs::Pose2D anchor_pose;
             *agent = agentMap->getValue(rover);
+            std::cout << "(ID) ---> " << agent->getID() << ", Rover <== " << rover << std::endl;
             int state = agent->getState();
             switch (state) {
                 case STATE_INIT: {
@@ -187,23 +189,24 @@ void mobilityStateMachine(const ros::TimerEvent &)
                             std::cout << "SUBSTATE ---> ANCHORING" << std::endl;
                             int iter = agent->getLocalization()->getIter();
                             std::map<int, Agent> agentMap_copy = agentMap->getMapCopy();
-                            double x_avg = 0;
-                            double y_avg = 0;
+                            double x_avg;
+                            double y_avg;
                             if (iter >= 0 && iter < MAX_ITER) {
                                 std::cout << "SUBSTATE ---> ANCHORING -> (1)" << std::endl;
                                 // Iterate through all agents except self
                                 for (std::map<int, Agent>::iterator it = agentMap_copy.begin();
                                      it != agentMap_copy.end(); ++it) {
                                     if (it->first != agent->getID()) { // We want the midpoints
+                                        std::cout << "MIDPIONT LOOP" << std::endl;
                                         x_avg += it->second.getCurrPose().x / 2;
                                         y_avg += it->second.getCurrPose().y / 2;
                                     }
                                 }
                                 x_avg /= agentMap_copy.size();
                                 y_avg /= agentMap_copy.size();
-//                                agentMap->getValue(rover).getLocalization()->addMidpoint(x_avg, y_avg);
                                 agent->getLocalization()->addMidpoint(x_avg, y_avg);
-                                std::cout << "Midpoint Size = " << agentMap->getValue(rover).getLocalization()->getMidpoints().size() << std::endl;
+                                std::cout << "Midpoint = {" << x_avg << ", " << y_avg << "}" << std::endl;
+                                std::cout << "Midpoint Size = " << agent->getLocalization()->getMidpoints().size() << std::endl;
                                 agent->getLocalization()->incrmtIter();
                             }
                             /*
@@ -211,7 +214,7 @@ void mobilityStateMachine(const ros::TimerEvent &)
                              */
                             else if (iter == MAX_ITER) {
                                 std::cout << "SUBSTATE ---> ANCHORING -> (2)" << std::endl;
-                                std::vector<geometry_msgs::Pose2D> midpoints = agent->getLocalization()->getMidpoints();
+                                std::vector<geometry_msgs::Pose2D> midpoints = agentMap->getValue(rover).getLocalization()->getMidpoints();
                                 for (std::vector<geometry_msgs::Pose2D>::iterator it = midpoints.begin();
                                      it != midpoints.end(); ++it) {
                                     x_avg += it->x;
@@ -228,8 +231,9 @@ void mobilityStateMachine(const ros::TimerEvent &)
                              */
                             else if (iter == MAX_ITER + 1) {
                                 std::cout << "SUBSTATE ---> ANCHORING -> (3)" << std::endl;
-                                for (std::map<int, Agent>::iterator it = agentMap_copy.begin();
-                                     it != agentMap_copy.end(); ++it) {
+                                for (std::map<int, Agent>::iterator it = agentMap_copy.begin(); it != agentMap_copy.end(); ++it) {
+                                    std::cout << "Looping" << std::endl;
+                                    std::cout << "R --> " << it->first << std::endl;
                                     x_avg += it->second.getLocalization()->getEstimated().x;
                                     y_avg += it->second.getLocalization()->getEstimated().y;
                                 }
@@ -240,7 +244,7 @@ void mobilityStateMachine(const ros::TimerEvent &)
                                 agent->getLocalization()->advanceSubstate();
                                 std::cout << "SUBSTATE <== " << agent->getLocalization()->getSubstate() << std::endl;
                                 agent->getLocalization()->incrmtIter();
-                                agent->getLocalization()->initAnchor();
+//                                agent->getLocalization()->initAnchor();
                             }
                             break;
                         }
@@ -279,39 +283,19 @@ void mobilityStateMachine(const ros::TimerEvent &)
                         agent->getLocalization()->incrmtIter();
                     }
                     angle = zoneMap->angleCalc(search_pose, current_location);
+                    angle = angles::shortest_angular_distance(angle, agent->getCurrPose().theta);
                     double dist = tangentialDist(current_location, search_pose);
-                    if (dist < 0.35) {
+                    if (dist < 0.1) {
                         vel.linear = 0;
                         vel.angular = 0;
                     }
                     else {
-                        vel.linear = 0.1 * dist;
-                        vel.angular = 0.2 * (angle - current_location.theta);
+                        vel.linear = 0.02 * dist;
+                        vel.angular = 0.07 * (angle);
                     }
                     std::cout << "Search Pose: X <- " << search_pose.x << ", Y <- " << search_pose.y << std::endl;
                     std::cout << "Dist to goal: " << dist << std::endl;
                     std::cout << "Angle to goal: " << angle << std::endl;
-
-
-//                    int ID = agent.getID();
-//                    switch (ID) {
-//                        case ACHILLES:
-//
-//                            break;
-//                        case AENEAS:
-//                            break;
-//                        case AJAX:
-//                            break;
-//                        case DIOMEDES:
-//                            break;
-//                        case HECTOR:
-//                            break;
-//                        case PARIS:
-//                            break;
-//                        default:
-//                            break;
-//                    }
-//
                     break;
                 }
                 case STATE_PICK_UP:
@@ -510,7 +494,7 @@ void mobilityStateMachine(const ros::TimerEvent &)
                     std::cout << "ERROR: bad agent state." << std::endl;
                     break;
             }
-
+            agentMap->updateMap(rover, *agent);
 
 
 
@@ -607,78 +591,44 @@ void obstacleHandler(const std_msgs::UInt8::ConstPtr &message)
 
 void odometryHandler(const nav_msgs::Odometry::ConstPtr &message)
 {
-    // TODO: we need to change our offset based around our frame of reference once anchor_node is established
     double perceived_pose[] = {message->pose.pose.position.x, message->pose.pose.position.y};
     /*
-     * Has the anchor_node been created
+     * Need to calculate offset of each rover, but only once
      */
-    if (agent->getLocalization()->isAnchor()) {
-        geometry_msgs::Pose2D pose;
-        pose.x = message->pose.pose.position.x;
-        pose.y = message->pose.pose.position.y;
-        double dist_toAnchor = tangentialDist(pose, agent->getLocalization()->getAnchor());
-        agent->getLocalization()->setConfidence(dist_toAnchor);
+    if (!initilazation) { // Is first time through
+        initilazation = true;
         switch  (rover) {
             case ACHILLES: // Starting simulator offset (0,1)
-                current_location.x = perceived_pose[0];
-                current_location.y = perceived_pose[1] + 1;
+                offset.x = 0 - perceived_pose[0];
+                offset.y = 1 - perceived_pose[1];
                 break;
             case AENEAS: // Starting simulator offest (-1,0)
-                current_location.x = perceived_pose[0] - 1;
-                current_location.y = perceived_pose[1];
+                offset.x = -1 - perceived_pose[0];
+                offset.y = 0 - perceived_pose[1];
                 break;
             case AJAX: // Starting simulator offset (1,0)
-                current_location.x = perceived_pose[0] + 1;
-                current_location.y = perceived_pose[1];
+                offset.x = 1 - perceived_pose[0];
+                offset.y = 0 - perceived_pose[1];
                 break;
             case DIOMEDES: // Starting simulator offset (1,1)
-                current_location.x = perceived_pose[0] + 1;
-                current_location.y = perceived_pose[1] + 1;
+                offset.x = 1 - perceived_pose[0];
+                offset.y = 1 - perceived_pose[1];
                 break;
             case HECTOR: // Startign simulator offset (-1,-1)
-                current_location.x = perceived_pose[0] - 1;
-                current_location.y = perceived_pose[1] - 1;
+                offset.x = -1 - perceived_pose[0];
+                offset.y = -1 - perceived_pose[1];
                 break;
             case PARIS: // Startign simulator offset (1, -1)
-                current_location.x = perceived_pose[0] + 1;
-                current_location.y = perceived_pose[1] - 1;
+                offset.x = 1 - perceived_pose[0];
+                offset.y = -1 - perceived_pose[1];
                 break;
             default:
                 std::cout << "ERROR: there are more agents than specificed (ODOMETRY HANDLER)." << std::endl;
                 break;
         }
     }
-    else {
-        switch (rover) {
-            case ACHILLES: // Starting simulator offset (0,1)
-                current_location.x = perceived_pose[0];
-                current_location.y = perceived_pose[1] + 1;
-                break;
-            case AENEAS: // Starting simulator offest (-1,0)
-                current_location.x = perceived_pose[0] - 1;
-                current_location.y = perceived_pose[1];
-                break;
-            case AJAX: // Starting simulator offset (1,0)
-                current_location.x = perceived_pose[0] + 1;
-                current_location.y = perceived_pose[1];
-                break;
-            case DIOMEDES: // Starting simulator offset (1,1)
-                current_location.x = perceived_pose[0] + 1;
-                current_location.y = perceived_pose[1] + 1;
-                break;
-            case HECTOR: // Startign simulator offset (-1,-1)
-                current_location.x = perceived_pose[0] - 1;
-                current_location.y = perceived_pose[1] - 1;
-                break;
-            case PARIS: // Startign simulator offset (1, -1)
-                current_location.x = perceived_pose[0] + 1;
-                current_location.y = perceived_pose[1] - 1;
-                break;
-            default:
-                std::cout << "ERROR: there are more agents than specificed (ODOMETRY HANDLER)." << std::endl;
-                break;
-        }
-    }
+    current_location.x = perceived_pose[0] + offset.x;
+    current_location.y = perceived_pose[1] + offset.y;
 
     //Get theta rotation by converting quaternion orientation to pitch/roll/yaw
     tf::Quaternion q(message->pose.pose.orientation.x, message->pose.pose.orientation.y,
@@ -695,6 +645,7 @@ void joyCmdHandler(const geometry_msgs::Twist::ConstPtr &message)
     {
         setVelocity(message->linear.x, message->angular.z);
     }
+
 }
 
 void publishStatusTimerEventHandler(const ros::TimerEvent &)

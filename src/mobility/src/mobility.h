@@ -104,6 +104,8 @@ Driveway<int> *driveway = new Driveway<int>();
 InnerRadius<std::string, CriticalPoints> *innerRadius = new InnerRadius<std::string, CriticalPoints>();
 geometry_msgs::Pose2D search_pose;
 Agent *agent;
+geometry_msgs::Pose2D offset;
+bool initilazation = false;
 
 typedef struct {
     double linear;
