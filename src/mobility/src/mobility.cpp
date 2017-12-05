@@ -91,7 +91,6 @@ int main(int argc, char **argv)
     if (rover_name == "achilles") {
         std::cout << "ACHILLES" << std::endl;
         rover = ACHILLES;
-
     } else if (rover_name == "aeneas") {
         std::cout << "AENEAS" << std::endl;
         rover = AENEAS;
@@ -144,7 +143,9 @@ int main(int argc, char **argv)
 void mobilityStateMachine(const ros::TimerEvent &)
 {
     std::cout << "STATE MACHINE" << std::endl;
+    std::cout << "MAP SIZE <== " << agentMap->getSize() << std::endl;
     std_msgs::String state_machine_msg;
+
 
     if ((simulation_mode == 2 || simulation_mode == 3)) // Robot is in automode
     {
@@ -170,10 +171,13 @@ void mobilityStateMachine(const ros::TimerEvent &)
             *agent = agentMap->getValue(rover);
             std::cout << "(ID) ---> " << agent->getID() << ", Rover <== " << rover << std::endl;
             int state = agent->getState();
+            if (agent->getLocalization()->isAnchor()) {
+
+            }
             switch (state) {
                 case STATE_INIT: {
                     std::cout << "STATE -> INIT" << std::endl;
-                    std::cout << "MAP SIZE <== " << agentMap->getSize() << std::endl;
+
                     LOC_SUBSTATE init_sub = agent->getLocalization()->getSubstate();
                     std::cout << "STATE -> INIT (ID) ---> " << agent->getID() << ", Rover <== " << rover << std::endl;
                     std::cout << "STATE -> INIT (POSE) ---> {" << agent->getCurrPose().x << ", " << agent->getCurrPose().y << "}" << std::endl;
@@ -193,11 +197,45 @@ void mobilityStateMachine(const ros::TimerEvent &)
                             double y_avg;
                             if (iter >= 0 && iter < MAX_ITER) {
                                 std::cout << "SUBSTATE ---> ANCHORING -> (1)" << std::endl;
+                                /*
+                                 * Make sure rover offset places rovers in correct positions for anchoring
+                                 */
+                                switch  (rover) {
+                                    case ACHILLES: // Starting simulator offset (0,1)
+                                        offset.x = 0 - current_location.x;
+                                        offset.y = 1 - current_location.y;
+                                        break;
+                                    case AENEAS: // Starting simulator offest (-1,0)
+                                        offset.x = -1 - current_location.x;
+                                        offset.y = 0 - current_location.y;
+                                        break;
+                                    case AJAX: // Starting simulator offset (1,0)
+                                        offset.x = 1 - current_location.x;
+                                        offset.y = 0 - current_location.y;
+                                        break;
+                                    case DIOMEDES: // Starting simulator offset (1,1)
+                                        offset.x = 1 - current_location.x;
+                                        offset.y = 1 - current_location.y;
+                                        break;
+                                    case HECTOR: // Startign simulator offset (-1,-1)
+                                        offset.x = -1 - current_location.x;
+                                        offset.y = -1 - current_location.y;
+                                        break;
+                                    case PARIS: // Startign simulator offset (1, -1)
+                                        offset.x = 1 - current_location.x;
+                                        offset.y = -1 - current_location.y;
+                                        break;
+                                    default:
+                                        std::cout << "ERROR: there are more agents than specificed ()." << std::endl;
+                                        break;
+                                }
+                                current_location.x += offset.x;
+                                current_location.y += offset.y;
+                                agent->setCurrPose(current_location);
                                 // Iterate through all agents except self
                                 for (std::map<int, Agent>::iterator it = agentMap_copy.begin();
                                      it != agentMap_copy.end(); ++it) {
                                     if (it->first != agent->getID()) { // We want the midpoints
-                                        std::cout << "MIDPIONT LOOP" << std::endl;
                                         x_avg += it->second.getCurrPose().x / 2;
                                         y_avg += it->second.getCurrPose().y / 2;
                                     }
@@ -205,8 +243,6 @@ void mobilityStateMachine(const ros::TimerEvent &)
                                 x_avg /= agentMap_copy.size();
                                 y_avg /= agentMap_copy.size();
                                 agent->getLocalization()->addMidpoint(x_avg, y_avg);
-                                std::cout << "Midpoint = {" << x_avg << ", " << y_avg << "}" << std::endl;
-                                std::cout << "Midpoint Size = " << agent->getLocalization()->getMidpoints().size() << std::endl;
                                 agent->getLocalization()->incrmtIter();
                             }
                             /*
@@ -232,19 +268,14 @@ void mobilityStateMachine(const ros::TimerEvent &)
                             else if (iter == MAX_ITER + 1) {
                                 std::cout << "SUBSTATE ---> ANCHORING -> (3)" << std::endl;
                                 for (std::map<int, Agent>::iterator it = agentMap_copy.begin(); it != agentMap_copy.end(); ++it) {
-                                    std::cout << "Looping" << std::endl;
-                                    std::cout << "R --> " << it->first << std::endl;
                                     x_avg += it->second.getLocalization()->getEstimated().x;
                                     y_avg += it->second.getLocalization()->getEstimated().y;
                                 }
                                 x_avg /= agentMap_copy.size();
                                 y_avg /= agentMap_copy.size();
                                 agent->getLocalization()->setAnchor(x_avg, y_avg);
-                                std::cout << "SUBSTATE <== " << agent->getLocalization()->getSubstate() << std::endl;
                                 agent->getLocalization()->advanceSubstate();
-                                std::cout << "SUBSTATE <== " << agent->getLocalization()->getSubstate() << std::endl;
                                 agent->getLocalization()->incrmtIter();
-//                                agent->getLocalization()->initAnchor();
                             }
                             break;
                         }
@@ -275,9 +306,7 @@ void mobilityStateMachine(const ros::TimerEvent &)
                  */
                 case STATE_SEARCH: {
                     std::cout << "STATE -> SEARCH" << std::endl;
-                    std::cout << "CURRENT LOCATION ---> {" << current_location.x << ", " << current_location.y << "}" << std::endl;
                     if (agent->getLocalization()->getIter() == 0) {
-                        std::cout << "Search Pose: X <- " << search_pose.x << ", Y <- " << search_pose.y << std::endl;
                         search_pose.x = current_location.x * 3;
                         search_pose.y = current_location.y * 3;
                         agent->getLocalization()->incrmtIter();
@@ -541,6 +570,7 @@ void mobilityStateMachine(const ros::TimerEvent &)
     rover_pose.data.push_back(current_location.y);
     rover_pose.data.push_back(current_location.theta);
     currentPose.publish(rover_pose);
+    std::cout << "CURRENT LOCATION ---> {" << current_location.x << ", " << current_location.y << "}" << std::endl;
     std::cout << "End publisher" << std::endl;
 
 
@@ -592,43 +622,8 @@ void obstacleHandler(const std_msgs::UInt8::ConstPtr &message)
 void odometryHandler(const nav_msgs::Odometry::ConstPtr &message)
 {
     double perceived_pose[] = {message->pose.pose.position.x, message->pose.pose.position.y};
-    /*
-     * Need to calculate offset of each rover, but only once
-     */
-    if (!initilazation) { // Is first time through
-        initilazation = true;
-        switch  (rover) {
-            case ACHILLES: // Starting simulator offset (0,1)
-                offset.x = 0 - perceived_pose[0];
-                offset.y = 1 - perceived_pose[1];
-                break;
-            case AENEAS: // Starting simulator offest (-1,0)
-                offset.x = -1 - perceived_pose[0];
-                offset.y = 0 - perceived_pose[1];
-                break;
-            case AJAX: // Starting simulator offset (1,0)
-                offset.x = 1 - perceived_pose[0];
-                offset.y = 0 - perceived_pose[1];
-                break;
-            case DIOMEDES: // Starting simulator offset (1,1)
-                offset.x = 1 - perceived_pose[0];
-                offset.y = 1 - perceived_pose[1];
-                break;
-            case HECTOR: // Startign simulator offset (-1,-1)
-                offset.x = -1 - perceived_pose[0];
-                offset.y = -1 - perceived_pose[1];
-                break;
-            case PARIS: // Startign simulator offset (1, -1)
-                offset.x = 1 - perceived_pose[0];
-                offset.y = -1 - perceived_pose[1];
-                break;
-            default:
-                std::cout << "ERROR: there are more agents than specificed (ODOMETRY HANDLER)." << std::endl;
-                break;
-        }
-    }
-    current_location.x = perceived_pose[0] + offset.x;
-    current_location.y = perceived_pose[1] + offset.y;
+    current_location.x = perceived_pose[0];
+    current_location.y = perceived_pose[1];
 
     //Get theta rotation by converting quaternion orientation to pitch/roll/yaw
     tf::Quaternion q(message->pose.pose.orientation.x, message->pose.pose.orientation.y,
@@ -693,32 +688,12 @@ void headingHandler(const std_msgs::Float64MultiArray::ConstPtr &message) { // T
 
     // Create Agent
     if (!agentMap->exists(rover)){
-        switch (current_rover) {
-            case ACHILLES:
-                agent = new Agent(ACHILLES, msg_pose);
-                break;
-            case AENEAS:
-                agent = new Agent(AENEAS, msg_pose);
-                break;
-            case AJAX:
-                agent = new Agent(AJAX, msg_pose);
-                break;
-            case DIOMEDES:
-                agent = new Agent(DIOMEDES, msg_pose);
-                break;
-            case HECTOR:
-                agent = new Agent(HECTOR, msg_pose);
-                break;
-            case PARIS:
-                agent = new Agent(PARIS, msg_pose);
-                break;
-            default:
-                std::cout << "ERROR: bad rover value (HEADING HANDLER)" << std::endl;
-                break;
-        }
+        agent = new Agent (current_rover, msg_pose);
         agentMap->addToMap(rover, *agent);
     }
     else {
+        *agent = agentMap->getValue(rover);
+        agent->setCurrPose(msg_pose);
         agentMap->updateMap(rover, *agent);
     }
 

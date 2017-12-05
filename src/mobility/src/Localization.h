@@ -40,6 +40,7 @@ public:
         pose.x = x;
         pose.y = y;
         this->anchor_node = pose;
+        this->anchor_set = true;
     }
     void setConfidence(double dist_toAnchor) {
         if (dist_toAnchor < 0.01) {
@@ -73,9 +74,6 @@ public:
     }
     void setSubstate (LOC_SUBSTATE sub) {
         this->substate = sub;
-    }
-    void initAnchor() {
-        this->anchor_set = true;
     }
 
     /*
