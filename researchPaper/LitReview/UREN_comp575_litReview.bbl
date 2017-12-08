@@ -1,0 +1,34 @@
+\begin{thebibliography}{1}
+
+\bibitem{ferber1998meta}
+Jacques Ferber and Olivier Gutknecht.
+\newblock A meta-model for the analysis and design of organizations in
+  multi-agent systems.
+\newblock In {\em Multi Agent Systems, 1998. Proceedings. International
+  Conference on}, pages 128--135. IEEE, 1998.
+
+\bibitem{becker2009analyzing}
+Raphen Becker, Alan Carlin, Victor Lesser, and Shlomo Zilberstein.
+\newblock Analyzing myopic approaches for multi-agent communication.
+\newblock {\em Computational Intelligence}, 25(1):31--50, 2009.
+
+\bibitem{aragues2011multi}
+Rosario Aragues, Luca Carlone, G~Calafiore, and C~Sagues.
+\newblock Multi-agent localization from noisy relative pose measurements.
+\newblock In {\em Robotics and Automation (ICRA), 2011 IEEE International
+  Conference on}, pages 364--369. IEEE, 2011.
+
+\bibitem{rothermich2004distributed}
+Joseph~A Rothermich, M~{\.I}hsan Ecemi{\c{s}}, and Paolo Gaudiano.
+\newblock Distributed localization and mapping with a robotic swarm.
+\newblock In {\em International Workshop on Swarm Robotics}, pages 58--69.
+  Springer, 2004.
+
+\bibitem{hoff2010two}
+Nicholas~R Hoff, Amelia Sagoff, Robert~J Wood, and Radhika Nagpal.
+\newblock Two foraging algorithms for robot swarms using only local
+  communication.
+\newblock In {\em Robotics and Biomimetics (ROBIO), 2010 IEEE International
+  Conference on}, pages 123--130. IEEE, 2010.
+
+\end{thebibliography}
