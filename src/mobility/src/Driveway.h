@@ -9,29 +9,25 @@
 #include "ActiveAgents.h"
 #include "WaitingAgents.h"
 #include "GarageAgents.h"
-#include "InnerRadius.h"
 
 typedef enum {
     INIT = 0, ACTIVE, WAITING, GARAGE, DELIVERY
 } DRIVEWAY_TYPE;
 
-template <typename T, class S>
-class Driveway : private  ActiveAgents<T>, private WaitingAgents<T>,
-                    private  GarageAgents<T>, private InnerRadius<T,S> {
+template <typename T>
+class Driveway : private  ActiveAgents<T>, private WaitingAgents<T>, private  GarageAgents<T> {
 private:
     double r_out;
     bool exit;
     int delivery;
     int spins;
-    InnerRadius<T,S> *r_in;
-    ActiveAgents<T> *activeAgents;
-    WaitingAgents<T> *waitingAgents;
-    GarageAgents<T> *garageAgents;
+    ActiveAgents<int> *activeAgents;
+    WaitingAgents<int> *waitingAgents;
+    GarageAgents<int> *garageAgents;
 
 public:
     Driveway () : activeAgents(new ActiveAgents<int>()), waitingAgents(new WaitingAgents<int>()),
-                  garageAgents(new GarageAgents<int>()), r_in(new InnerRadius<std_msgs::String, CRITICAL_POINTS>()),
-                  delivery(-1), r_out(R3), exit(false), spins(0) {}
+                  garageAgents(new GarageAgents<int>()), delivery(-1), r_out(R3), exit(false), spins(0) {}
 
     /*
      * Setters
@@ -152,6 +148,6 @@ public:
     }
 };
 
-#include "Driveway.cpp"
+//#include "Driveway.cpp"
 
 #endif //PROJECT_DRIVEWAY_H

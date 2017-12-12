@@ -8,7 +8,7 @@
 #include "AgentVectorInterface.h"
 
 template <typename T>
-class ActiveAgents : protected AgentVectorInterface<T> {
+class ActiveAgents : public AgentVectorInterface<T> {
 public:
     ActiveAgents () {
         new AgentVectorInterface<T>();

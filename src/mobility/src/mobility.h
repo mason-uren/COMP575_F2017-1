@@ -13,10 +13,15 @@
 #include "ZoneMap.h"
 #include "AgentMap.h"
 #include "Driveway.h"
+#include "InnerRadius.h"
 
 
 #define NEIGH_DIST 2
 #define TUNING_CONST 0.45
+#define TRAVERSE_STD 0.15
+#define TRAVERSE_ERR 0.1
+#define ORIENTATION_ERR 0.05
+#define MAX_ITER 30
 
 /*
  * ROVER_REFS
@@ -85,23 +90,27 @@ std_msgs::String globalHeading ();
 void neighbors (int name);
 std_msgs::String localHeading (int name);
 std_msgs::String localPose (int name);
-
-typedef enum {
-    ACHILLES = 0, AENEAS, AJAX, DIOMEDES, HECTOR, PARIS
-} ROVER_NAME;
-
-//typedef struct {
-//    std::vector<double> neighbor;
-//} NEIGHBORS;
-
-//typedef struct rover_pose{
-//    int name;
-//    double x;
-//    double y;
-//    double theta;
-//    NEIGHBORS neighbors;
-//} ROVER_POSE;
+double tangentialDist(geometry_msgs::Pose2D a, geometry_msgs::Pose2D b) {
+    return hypot((a.x - b.x), (a.y - b.y));
+}
 
 
-std::map<int, RoverPose> rover_hash;
+/*
+ * Global Variables
+ */
+ZoneMap<std::string, Zone> *zoneMap = new ZoneMap<std::string, Zone>();
+AgentMap<int, Agent> *agentMap = new AgentMap<int, Agent>();
+Driveway<int> *driveway = new Driveway<int>();
+InnerRadius<std::string, CriticalPoints> *innerRadius = new InnerRadius<std::string, CriticalPoints>();
+geometry_msgs::Pose2D search_pose;
+Agent *agent;
+geometry_msgs::Pose2D offset;
+bool initilazation = false;
+
+typedef struct {
+    double linear;
+    double angular;
+} VELOCITY;
+
+//std::map<int, RoverPose> rover_hash;
 #endif //PROJECT_MOBILITY_H

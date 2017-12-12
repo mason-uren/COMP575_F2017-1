@@ -10,7 +10,7 @@
 #include "Agent.h"
 
 template <typename T, class S>
-class AgentMap : private Map<T,S>, private Agent {
+class AgentMap : public Map<T,S>, private Agent {
 private:
 
 public:

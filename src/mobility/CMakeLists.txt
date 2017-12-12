@@ -31,7 +31,25 @@ add_executable(
 	src/TranslationalController.cpp
 	src/SearchController.cpp
 	src/TargetState.cpp
-)
+		src/ActiveAgents.h
+		src/Agent.h
+		src/AgentMap.h
+		src/AgentQueueInterface.h
+		src/AgentStates.h
+		src/AgentVectorInterface.h
+		src/Driveway.cpp
+		src/Driveway.h
+		src/GarageAgents.h
+		src/InnerRadius.cpp
+		src/InnerRadius.h
+		src/Localization.h
+		src/Map.h
+		src/WaitingAgents.h
+		src/Zone.cpp
+		src/Zone.h
+		src/ZoneMap.cpp
+		src/ZoneMap.h
+		src/CriticalPoints.h)
 
 add_dependencies(mobility ${catkin_EXPORTED_TARGETS})
 

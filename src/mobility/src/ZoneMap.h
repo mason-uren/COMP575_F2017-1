@@ -14,10 +14,10 @@
 #define ERROR_MARGIN 0.1 // Radians
 
 template <typename T, class S>
-class ZoneMap : private Map<T,S>, private Zone {
+class ZoneMap : public Map<T,S>, private Zone {
 private:
-    std::vector<std_msgs::String> availability;
-    std_msgs::String name;
+    std::vector<std::string> availability;
+    std::string name;
     geometry_msgs::Pose2D pose;
 
     geometry_msgs::Pose2D defaultPose(double x, double y, double theta) {
@@ -33,22 +33,27 @@ public:
         new Map<T,S>();
         // Add zone A -> D
         for (int zones = 0; zones < 4; zones++) { // TODO: I don't like that ZoneMap size is effectively being set here
-            name.data.clear();
+//            this->name.data.clear();
+            this->name.clear();
             switch (zones) {
                 case 0:
-                    name.data = "a";
+//                    this->name.data = "a";
+                    this->name = "a";
                     this->pose = this->defaultPose(-RZ, 0, 0); // TODO: value for theta needs to be picked
                     break;
                 case 1:
-                    name.data = "b";
+//                    this->name.data = "b";
+                    this->name = "b";
                     this->pose = this->defaultPose(0, RZ, 0); // TODO: value for theta needs to be picked
                     break;
                 case 2:
-                    name.data = "c";
+//                    this->name.data = "c";
+                    this->name = "c";
                     this->pose = this->defaultPose(RZ, 0, 0);  // TODO: value for theta needs to be picked
                     break;
                 case 3:
-                    name.data = "d";
+//                    this->name.data = "d";
+                    this->name = "d";
                     this->pose = this->defaultPose(0, -RZ, 0);  // TODO: value for theta needs to be picked
                     break;
                 case 4:
@@ -57,7 +62,7 @@ public:
                     std::cout << "ERROR: number of zones does not match number currently allowed (ZONEMAP)." << std::endl;
                     break;
             }
-            this->addToMap(name, Zone::Zone(name, pose));
+            this->addToMap(this->name, Zone::Zone(this->name, this->pose));
         }
     }
 
@@ -74,8 +79,9 @@ public:
             pose.x = 0;
             pose.y = 0;
             pose.theta = 0;
-            std_msgs::String null_string;
-            null_string.data = "NULL";
+//            std_msgs::String null_string;
+//            null_string.data = "NULL";
+            std::string null_string = "NULL";
             robot.setGZPose(null_string, true, pose); // Add target pose to robot object
         }
         else {
@@ -83,7 +89,7 @@ public:
              * Only one zone open
              */
             if (this->availability.size() > 0 && this->availability.size() < 2) {
-                std_msgs::String key = this->availability.front();
+                std::string key = this->availability.front();
                 zone = this->getValue(key);
                 robot.setGZPose(zone.getName(), true, zone.getPose()); // Add target pose to robot object
             }
@@ -93,7 +99,7 @@ public:
             else {
                 double goal_angle = -M_PI;
                 Zone temp_zone;
-                for (std::vector<std_msgs::String>::iterator it = this->availability.begin(); it != this->availability.end(); ++it) {
+                for (std::vector<std::string>::iterator it = this->availability.begin(); it != this->availability.end(); ++it) {
                     temp_zone = this->getValue(*it);
                     geometry_msgs::Pose2D targ_pose = temp_zone.getPose();
                     /*
@@ -128,9 +134,10 @@ public:
          * Check for available zones
          * Pass copy of map so ZoneMap can develop iterator
          */
-        std::map<std_msgs::String, Zone> map_copy = this->getMapCopy();
-        for (typename std::map<std_msgs::String, Zone>::iterator it = map_copy.begin(); it != map_copy.end(); ++it) {
-            if (!this->getValue(it->first).getOccupancy()) {
+        std::map<std::string, Zone> map_copy = this->getMapCopy();
+        for (typename std::map<std::string, Zone>::iterator it = map_copy.begin(); it != map_copy.end(); ++it) {
+            Zone zone = this->getValue(it->first);
+            if (!zone.getOccupancy()) {
                 availability.push_back(it->first);
             }
         }
@@ -148,6 +155,6 @@ public:
     }
 };
 
-#include "ZoneMap.cpp"
+//#include "ZoneMap.cpp"
 
 #endif //PROJECT_ZONEMAP_H

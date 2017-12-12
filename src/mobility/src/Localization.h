@@ -7,12 +7,6 @@
 
 #include "Zone.h"
 
-typedef struct {
-    int iteration;
-    double x_avg;
-    double y_avg;
-} LOC_INIT;
-
 typedef enum {
     ANCHORING = 0, WEIGHTING, BEGINNING
 } LOC_SUBSTATE;
@@ -22,16 +16,14 @@ private:
     std::vector<geometry_msgs::Pose2D> midpoints;
     geometry_msgs::Pose2D estimated_pose;
     geometry_msgs::Pose2D anchor_node;
-    double weight;
-    LOC_INIT localization_init;
+    bool anchor_set;
+    double confidence;
+    int iteration;
     LOC_SUBSTATE substate;
 
 public:
-    Localization (geometry_msgs::Pose2D curr, geometry_msgs::Pose2D anchor) : anchor_node(anchor), weight(0), substate(ANCHORING) {
-        this->localization_init.iteration = 0;
-        this->localization_init.x_avg = 0;
-        this->localization_init.y_avg = 0;
-    }
+    Localization (geometry_msgs::Pose2D curr, geometry_msgs::Pose2D anchor) :
+            anchor_node(anchor), confidence(0), iteration(0), substate(ANCHORING), anchor_set(false) {}
     Localization () {}
 
     /*
@@ -48,22 +40,40 @@ public:
         pose.x = x;
         pose.y = y;
         this->anchor_node = pose;
+        this->anchor_set = true;
     }
-    void setWeight(double w) {
-        this->weight = w;
+    void setConfidence(double dist_toAnchor) {
+        if (dist_toAnchor < 0.01) {
+            this->confidence = 1;
+        }
+        else {
+            this->confidence = 1 / dist_toAnchor;
+        }
     }
-    void setIter(int iter) {
-        this->localization_init.iteration = iter;
+    void incrmtIter() {
+        this->iteration++;
     }
-    void setAverages(double x, double y) {
-        this->localization_init.x_avg = x;
-        this->localization_init.y_avg = y;
+    void resetIter() {
+        this->iteration = 0;
     }
     void addMidpoint(double xAvg, double yAvg) {
         geometry_msgs::Pose2D pose;
         pose.x = xAvg;
         pose.y = yAvg;
         this->midpoints.push_back(pose);
+    }
+    void advanceSubstate() {
+        switch (this->substate) {
+            case ANCHORING:
+                this->substate = WEIGHTING;
+                break;
+            case WEIGHTING:
+                this->substate = BEGINNING;
+                break;
+        }
+    }
+    void setSubstate (LOC_SUBSTATE sub) {
+        this->substate = sub;
     }
 
     /*
@@ -75,14 +85,20 @@ public:
     geometry_msgs::Pose2D getAnchor() {
         return this->anchor_node;
     }
-    double getWeight() {
-        return this->weight;
+    double getConfidence() {
+        return this->confidence;
     }
-    LOC_INIT getInit() {
-        return this->localization_init;
+    int getIter() {
+        return this->iteration;
     }
     std::vector<geometry_msgs::Pose2D> getMidpoints() {
         return this->midpoints;
+    }
+    LOC_SUBSTATE getSubstate() {
+        return this->substate;
+    }
+    bool isAnchor() {
+        return this->anchor_set;
     }
 };
 
