@@ -1,9 +1,9 @@
 % --------------------------- %
 % --- DOCUMENT SETUP --- %
 % --------------------------- %
-\documentclass[letterpaper, 10pt, conference]{IEEEtran}
-\IEEEoverridecommandlockouts
-\overrideIEEEmargins
+\documentclass[letterpaper, 10pt, conference]{ieeeconf}
+%\IEEEoverridecommandlockouts
+%\overrideIEEEmargins
 
 \usepackage{graphicx}
 \graphicspath{ {Images/} }
@@ -31,10 +31,8 @@
 % ----------------------- %
 % --- TITLE SECTION --- %
 % ----------------------- %
-\title{DUMMY TITLE}
-\author{\IEEEauthorblockN{Mason U'Ren}
-	\IEEEauthorblockA{Compuer Science, 
-		CSU Channel Islands\\}}
+\title{Localization and Rover Home Approach}
+\author{Mason U'Ren}
 	
 % --------------------------- %
 % --- BEGIN DOCUMENT --- %
@@ -42,8 +40,6 @@
 
 \begin{document}
 	
-
-
 \maketitle
 
 \begin{abstract}
@@ -52,11 +48,26 @@ Temporary Abstract
 
 
 \section{Introduction}
+\input{intro_575}
+
+\section{Problem Statement}
+
+
+\section{Algorithm}
+\input{algorithm}
+
+
+\section{Results}
+\input{results}
+
+
+\section{Conclusion}
+
 
 
 
 \bibliographystyle{IEEEtran}
-\bibliography{COMP575_F2017-1}
+%\bibliography{COMP575_F2017-1}
 
 \end{document}
 
