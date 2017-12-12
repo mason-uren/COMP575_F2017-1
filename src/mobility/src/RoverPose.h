@@ -15,6 +15,7 @@ class RoverPose {
         double avg_global_theta;
         double avg_local_theta;
         double avg_local_pose;
+        double separation;
         std::vector<int> neighbors;
 
         explicit RoverPose (geometry_msgs::Pose2D pose) : rover_pose(pose){

@@ -142,9 +142,11 @@ void mobilityStateMachine(const ros::TimerEvent &)
 //            float angular_velocity = 0.2;
 //            float linear_velocity = 0.1;
 //            double angular_velocity = TUNING_CONST * (rover_hash[rover].avg_local_theta - current_location.theta);
-            double angular_velocity = TUNING_CONST * (rover_hash[rover].avg_local_pose - current_location.theta);
+            double angular_velocity = 0.3 * (rover_hash[rover].avg_local_pose - current_location.theta) +
+                    0.3 * (rover_hash[rover].avg_local_theta - current_location.theta) +
+                    0.15 * (rover_hash[rover].separation - current_location.theta);
             std::cout << "Angular velecity: " << angular_velocity << std::endl;
-            float linear_velocity = 0;
+            float linear_velocity = 0.1;
             setVelocity(linear_velocity, angular_velocity);
             break;
         }
@@ -314,6 +316,11 @@ void headingHandler(const std_msgs::Float64MultiArray::ConstPtr &message) {
     std_msgs::String lP = localPose((int)  message->data[0]);
     rover_hash[current_rover].avg_local_pose = std::strtod(lP.data.c_str(), &end);
     end = NULL; // clear pointers
+
+//    Call separation
+    std_msgs::String sep = separation((int) message->data[0]);
+    rover_hash[current_rover].separation = std::strtod(sep.data.c_str(), &end);
+    end = NULL; // clear pointers
 }
 
 std_msgs::String globalHeading (){
@@ -415,3 +422,34 @@ std_msgs::String localPose (int name) {
 
     return content;
 }
+
+std_msgs::String separation (int name)  {
+    char buf[256];
+    static const int arr[] = {0,0}; // Default bad values
+    std::vector<double> thetaG(arr, arr + sizeof(arr) / sizeof(arr[0]));
+    std_msgs::String content;
+    double sep;
+    std::vector<double> rNeighb;
+
+//    Iterate through respective neighbors vector
+    for (std::vector<int>::iterator it = rover_hash[name].neighbors.begin(); it != rover_hash[name].neighbors.end(); ++it) {
+        rNeighb.push_back(*it);
+    }
+
+//    Iterate through neighboring rovers' pose and steer away
+    for (std::vector<double>::iterator it = rNeighb.begin(); it != rNeighb.end(); ++it) {
+        thetaG.at(0) += rover_hash[*it].rover_pose.x - current_location.x;
+        thetaG.at(1) += rover_hash[*it].rover_pose.y - current_location.y;
+    }
+    thetaG.at(0) /= -thetaG.size();
+    thetaG.at(1) /= -thetaG.size();
+    sep = std::atan2(thetaG[1], thetaG[0]);
+
+//    Format String
+    snprintf(buf, 256, "%lf", sep);
+    content.data = string(buf);
+    memset(buf, 0, 255); // clear char array
+
+    return content;
+}
+

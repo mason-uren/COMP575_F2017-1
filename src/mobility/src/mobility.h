@@ -85,6 +85,7 @@ std_msgs::String globalHeading ();
 void neighbors (int name);
 std_msgs::String localHeading (int name);
 std_msgs::String localPose (int name);
+std_msgs::String separation (int name);
 
 typedef enum {
     ACHILLES = 0, AENEAS, AJAX, DIOMEDES, HECTOR, PARIS
