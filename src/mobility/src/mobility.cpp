@@ -325,13 +325,13 @@ void mobilityStateMachine(const ros::TimerEvent &)
                     angle = zoneMap->angleCalc(agent->getGoalPose(), agent->getCurrPose());
                     angle = angles::shortest_angular_distance(angle, agent->getCurrPose().theta);
                     double dist = tangentialDist(agent->getGoalPose(), current_location);
-                    if (dist < 0.5) {
+                    if (dist < 0.3) {
                         agent->setAngVel(0);
                         agent->setLinVel(0);
                     }
                     else {
-                        agent->setAngVel(0.1 * -angle);
-                        agent->setLinVel(0.02 * dist);
+                        agent->setAngVel(0.3 * -angle);
+                        agent->setLinVel(0.01 * dist);
                     }
                     agent->getLocalization()->setVelConfidence(agent->getLinVel());
                     agentMap->updateMap(rover, *agent);
