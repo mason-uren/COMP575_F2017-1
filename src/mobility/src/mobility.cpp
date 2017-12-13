@@ -315,13 +315,15 @@ void mobilityStateMachine(const ros::TimerEvent &)
                         search_pose.x = current_location.x * 3;
                         search_pose.y = current_location.y * 3;
                         agent->setGoalPose(search_pose);
+                        double dist_toGoal = agent->distFromGoal();
+                        agent->getLocalization()->setGoalConfidence(dist_toGoal);
                         agent->getLocalization()->incrmtIter();
                         agentMap->updateMap(rover, *agent);
                     }
-                    angle = zoneMap->angleCalc(agent->getGoalPose(), current_location);
+                    angle = zoneMap->angleCalc(agent->getGoalPose(), agent->getCurrPose());
                     angle = angles::shortest_angular_distance(angle, agent->getCurrPose().theta);
                     double dist = tangentialDist(agent->getGoalPose(), current_location);
-                    if (dist < 0.3) {
+                    if (dist < 0.5) {
                         agent->setAngVel(0);
                         agent->setLinVel(0);
                     }
@@ -329,6 +331,8 @@ void mobilityStateMachine(const ros::TimerEvent &)
                         agent->setAngVel(0.07 * angle);
                         agent->setLinVel(0.02 * dist);
                     }
+                    agent->getLocalization()->setVelConfidence(agent->getLinVel());
+                    agentMap->updateMap(rover, *agent);
                     std::cout << "Search Pose: X <- " << search_pose.x << ", Y <- " << search_pose.y << std::endl;
                     std::cout << "Dist to goal: " << dist << std::endl;
                     std::cout << "Angle to goal: " << angle << std::endl;
@@ -694,17 +698,32 @@ void headingHandler(const std_msgs::Float64MultiArray::ConstPtr &message) { // T
     msg_pose.theta = message->data[3];
 
     // Create Agent
-    if (!agentMap->exists(rover)){
+    if (!agentMap->exists(current_rover)){
         agent = new Agent (current_rover, msg_pose);
-        agentMap->addToMap(rover, *agent);
+        agentMap->addToMap(current_rover, *agent);
     }
     else {
-        *agent = agentMap->getValue(rover);
-        if (agent->getState() != STATE_INIT) {
-//            double angle = std::atan2()
+        *agent = agentMap->getValue(current_rover);
+        double x_off;
+        double y_off;
+        if (agent->getState() != STATE_INIT && agent->getLocalization()->getIter()) {
+            double angle = std::atan2(agent->getGoalPose().y - msg_pose.y, agent->getGoalPose().x - msg_pose.x);
+            // GPS ERROR
+            agent->getLocalization()->setAnchConfidence(agent->distFromAnchor());
+            // Odometry Error
+            agent->getLocalization()->setGoalConfidence(agent->distFromGoal());
+            // Dynamic localization
+            agent->getLocalization()->setVelConfidence(agent->getLinVel());
+            double w = agent->getLocalization()->getAnchConfidence();
+            double u = agent->getLocalization()->getGoalConfidence();
+            double v = agent->getLocalization()->getVelConfidence();
+            x_off = w * (agent->getCurrPose().x - agent->getPrevPose().x) + u * (agent->getGoalPose().x - agent->getCurrPose().x) + v * std::cos(angle);
+            y_off = w * (agent->getCurrPose().y - agent->getPrevPose().y) + u * (agent->getGoalPose().y - agent->getCurrPose().y) + v * std::sin(angle);
+            msg_pose.x += x_off;
+            msg_pose.y += y_off;
         }
         agent->setCurrPose(msg_pose);
-        agentMap->updateMap(rover, *agent);
+        agentMap->updateMap(current_rover, *agent);
     }
 
 

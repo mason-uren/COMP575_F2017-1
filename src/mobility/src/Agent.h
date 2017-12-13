@@ -145,6 +145,10 @@ public:
         return hypot((this->current_pose.x - this->localization->getAnchor().x),
                           (this->current_pose.y - this->localization->getAnchor().y));
     }
+    double distFromGoal() {
+        return hypot((this->current_pose.x - this->getGoalPose().x),
+                     (this->current_pose.y - this->getGoalPose().y));
+    }
     bool getReachedCPS() {
         return this->reachedCPS;
     }

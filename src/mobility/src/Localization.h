@@ -46,11 +46,27 @@ public:
         this->anchor_set = true;
     }
     void setAnchConfidence(double dist_toAnchor) {
-        if (dist_toAnchor < 0.01) {
+        if (dist_toAnchor < 0.1) {
             this->anchor_confidence = 1;
         }
         else {
-            this->anchor_confidence = 1 / dist_toAnchor;
+            this->anchor_confidence = std::exp(-dist_toAnchor);
+        }
+    }
+    void setGoalConfidence(double dist_toGoal) {
+        if (dist_toGoal < 0.05) {
+            this->goal_confidence = 1;
+        }
+        else {
+            this->goal_confidence = 1 / (1 + dist_toGoal);
+        }
+    }
+    void setVelConfidence(double vel) {
+        if (vel < 0.01) {
+            this->vel_confidence = 0;
+        }
+        else {
+            this->vel_confidence = std::pow(vel, 2);
         }
     }
     void incrmtIter() {
@@ -90,6 +106,12 @@ public:
     }
     double getAnchConfidence() {
         return this->anchor_confidence;
+    }
+    double getGoalConfidence() {
+        return this->goal_confidence;
+    }
+    double getVelConfidence() {
+        return this->vel_confidence;
     }
     int getIter() {
         return this->iteration;
