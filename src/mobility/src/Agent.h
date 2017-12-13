@@ -33,11 +33,12 @@ private:
     bool hasResource;
     bool reachedCPS;
     bool initTraversal;
+    bool reachedDriveway;
 
 public:
     Agent (int &ID, geometry_msgs::Pose2D &pose) : AgentStates(STATE_INIT), agent_ID(ID), angular_vel(0), linear_vel(0),
                                                  current_pose(pose), driveway_state(0), reachedCPS(false), hasResource(false),
-                                                 initTraversal(false), avg_global_theta(0), avg_local_theta(0) {
+                                                 initTraversal(false), avg_global_theta(0), avg_local_theta(0), reachedDriveway(false) {
         geometry_msgs::Pose2D temp_pose;
         std::string init_string;
         temp_pose.x = 0;
@@ -103,6 +104,9 @@ public:
     void setInitTraversal(bool value) {
         this->initTraversal = value;
     }
+    void atDriveway(bool value) {
+        this->reachedDriveway = value;
+    }
 
 
     /*
@@ -163,6 +167,9 @@ public:
     }
     GOAL_ZONE_POSE getGZPose() {
         return this->goal_zone;
+    }
+    bool hasReachedDriveway() {
+        return this->reachedDriveway;
     }
 
  };

@@ -23,7 +23,7 @@
 #define ORIENTATION_ERR 0.05
 #define MAX_ITER 30
 #define ANGLR_CONST 0.35
-#define LIN_CONST 0.07
+#define LIN_CONST 0.05
 
 /*
  * ROVER_REFS

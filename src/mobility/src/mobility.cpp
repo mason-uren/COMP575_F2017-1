@@ -25,6 +25,7 @@
 
 
 #include "mobility.h"
+#include "Zone.h"
 
 
 using namespace std;
@@ -144,6 +145,7 @@ void mobilityStateMachine(const ros::TimerEvent &)
 {
     std::cout << "STATE MACHINE" << std::endl;
     std::cout << "MAP SIZE <== " << agentMap->getSize() << std::endl;
+    std::cout << "Rover --> " << rover << std::endl;
     std_msgs::String state_machine_msg;
 
 
@@ -320,8 +322,8 @@ void mobilityStateMachine(const ros::TimerEvent &)
                     std::cout << "STATE -> SEARCH" << std::endl;
                     std::cout << "STATE -> SEARCH ---> CURRENT LOCATION {" << agent->getCurrPose().x << ", " << agent->getCurrPose().y << "}" << std::endl;
                     if (agent->getLocalization()->getIter() == 0) {
-                        search_pose.x = agent->getCurrPose().x * 3;
-                        search_pose.y = agent->getCurrPose().y * 3;
+                        search_pose.x = agent->getCurrPose().x * 4;
+                        search_pose.y = agent->getCurrPose().y * 4;
                         agent->setGoalPose(search_pose);
                         dist_toGoal = agent->distFromGoal();
                         agent->getLocalization()->setGoalConfidence(dist_toGoal);
@@ -334,7 +336,7 @@ void mobilityStateMachine(const ros::TimerEvent &)
                      * Is the rover within it's goal location +/- some radial error
                      * True: set all velocities to 0
                      */
-                    if (agent->distFromGoal() < 0.1) {
+                    if (agent->distFromGoal() < 0.15) {
                         agent->setAngVel(0);
                         agent->setLinVel(0);
                         agent->setState(STATE_PICK_UP);
@@ -359,8 +361,25 @@ void mobilityStateMachine(const ros::TimerEvent &)
                  */
                 case STATE_PICK_UP:
                     std::cout << "STATE -> PICK-UP" << std::endl;
-                    agent->setResource(true);
-                    agent->setState(STATE_FIND_HOME);
+                    /*
+                     * Switch statement for testing purposes
+                     */
+                    switch (rover) {
+                        case ACHILLES:
+                            agent->setResource(true);
+                            agent->setState(STATE_FIND_HOME);
+                            break;
+                        case AENEAS:
+                        case AJAX:
+                        case HECTOR:
+                        case DIOMEDES:
+                        case PARIS:
+                            break;
+                        default:
+                            std::cout << "PICKUP: should not be hear" << std::endl;
+                            break;
+                    }
+//                    agent->setResource(true);
                     agentMap->updateMap(rover, *agent);
                     break;
                 /*
@@ -376,56 +395,80 @@ void mobilityStateMachine(const ros::TimerEvent &)
                     agent->setGoalPose(agent->getLocalization()->getAnchor());
                     dist_toAnchor = agent->distFromAnchor();
                     /*
-                     * Calculate velocites
+                     * Calculate velocities only if the driveway threshold has not beed reached
                      */
-                    angle = angleCalc(agent->getGoalPose(), agent->getCurrPose());
-                    angle = angles::shortest_angular_distance(agent->getCurrPose().theta, angle);
-                    agent->setAngVel(ANGLR_CONST * angle);
-                    agent->setLinVel(LIN_CONST * agent->distFromGoal());
+                    if (!agent->hasReachedDriveway()) {
+                        angle = angleCalc(agent->getGoalPose(), agent->getCurrPose());
+                        angle = angles::shortest_angular_distance(agent->getCurrPose().theta, angle);
+                        agent->setAngVel(ANGLR_CONST * angle);
+                        agent->setLinVel(LIN_CONST * agent->distFromAnchor());
+                    }
                     // TODO: maybe we need a 'goto goal' function; NOTE: possible issue with dynamic distance and angle calculation
                     if (agent->distFromGoal() <= R3) { // Beginning of Driveway
-                        switch (agent->getDrivewayState()) {
-                            case INIT: {
-                                /*
-                                 * Immediately change velocities to zero
-                                 */
-                                agent->setAngVel(0);
-                                agent->setLinVel(0);
-                                agentMap->updateMap(rover, *agent);
-                                /*
-                                 * Check if we there are any other agents on the driveway
-                                 */
-                                if (driveway->canEnter((DRIVEWAY_TYPE) agent->getDrivewayState())) {
+                        std::cout << "FIND HOME ---> Within R3" << std::endl;
+                        std::cout << "FINDHOME ---> CURRENT POSE = " << agent->getCurrPose().x << ", " << agent->getCurrPose().y << "}" << std::endl;
+                        if (agent->distFromAnchor() <= R3 - 0.3) {
+                            std::cout << "FINDHOME ---> Less than R3, transition" << std::endl;
+                            agent->setAngVel(0);
+                            agent->setLinVel(0);
+                            agent->atDriveway(true);
+                            agentMap->updateMap(rover, *agent);
+                            /*
+                             * Check if we there are any other agents on the driveway
+                             */
+                            if (driveway->canEnter((DRIVEWAY_TYPE) agent->getDrivewayState())) {
                                     *agent = driveway->addToDriveway(*agent, ACTIVE);
-                                    agentMap->updateMap(rover, *agent);
-                                } else {
+                                agentMap->updateMap(rover, *agent);
+                            } else {
                                     *agent = driveway->addToDriveway(*agent, WAITING);
-                                    agentMap->updateMap(rover, *agent);
-                                }
-                                break;
+                                agentMap->updateMap(rover, *agent);
                             }
+                        }
+                        switch (agent->getDrivewayState()) {
+//                            case INIT: {
+//                                /*
+//                                 * Immediately change velocities to zero
+//                                 */
+//                                agent->setAngVel(0);
+//                                agent->setLinVel(0);
+//                                agentMap->updateMap(rover, *agent);
+//                                /*
+//                                 * Check if we there are any other agents on the driveway
+//                                 */
+//                                if (driveway->canEnter((DRIVEWAY_TYPE) agent->getDrivewayState())) {
+////                                    *agent = driveway->addToDriveway(*agent, ACTIVE);
+//                                    agentMap->updateMap(rover, *agent);
+//                                } else {
+////                                    *agent = driveway->addToDriveway(*agent, WAITING);
+//                                    agentMap->updateMap(rover, *agent);
+//                                }
+//                                break;
+//                            }
                             case ACTIVE: {
+                                std::cout << "FINDHOME -> SUBSTATE ---> ACTIVE" << std::endl;
                                 // Determine closest zone
                                 zoneMap->checkAvailable();
                                 *agent = zoneMap->getClosestZone(*agent); // GZ Pose is set and wrapped up in the getClosestZone function
                                 agentMap->updateMap(agent->getID(), *agent); // Update map that claims zone
-                                *agent = agentMap->getValue(agent->getID());
+                                *agent = agentMap->getValue(rover);
 
                                 // Grab critical points for zone
                                 CriticalPoints cps = innerRadius->getCP(agent->getGZPose().zone_ID);
-                                double dist_toZone = tangentialDist(gz.goal_pose, current_location);
-                                angle = zoneMap->angleCalc(gz.goal_pose, current_location);
+                                double dist_toZone = tangentialDist(agent->getGZPose().goal_pose, agent->getCurrPose());
+                                angle = zoneMap->angleCalc(agent->getGZPose().goal_pose, agent->getCurrPose());
                                 /*
                                  * If goal zone is not right in front of the agent
                                  */
-                                if (gz.traverse) {
+                                if (agent->getGZPose().traverse) {
+                                    std::cout << "ACTIVE ---> Traverse Set" << std::endl;
                                     double factor;
-                                    double dist_cpL = tangentialDist(cps.leftCP(), current_location);
+                                    double dist_cpL = tangentialDist(cps.leftCP(), agent->getCurrPose());
                                     /*
                                      * Check if critical point along traversal are near
                                      * NOTE: I can't remember why I chose to create and check 'getReachedCPS' function
                                      */
                                     if (dist_cpL < 0.2 || agent->getReachedCPS()) {
+                                        std::cout << "ACTIVE ---> close to CP" << std::endl;
                                         /*
                                          * Change traversal path to traverse to zone garage
                                          * We need to calc equation of line depicted by critical point and where it meets RZ
@@ -446,6 +489,7 @@ void mobilityStateMachine(const ros::TimerEvent &)
                                         }
                                         vel.linear = 0.2 * (dist_toZone - +(RZ / 2)); // TODO: arbitrary value
                                     } else {
+
                                         /*
                                          * Default Traversal
                                          */
