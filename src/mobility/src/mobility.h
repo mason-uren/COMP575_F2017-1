@@ -22,6 +22,8 @@
 #define TRAVERSE_ERR 0.1
 #define ORIENTATION_ERR 0.05
 #define MAX_ITER 30
+#define ANGLR_CONST 0.35
+#define LIN_CONST 0.07
 
 /*
  * ROVER_REFS
@@ -90,10 +92,22 @@ std_msgs::String globalHeading ();
 void neighbors (int name);
 std_msgs::String localHeading (int name);
 std_msgs::String localPose (int name);
-double goalCalc (Agent agent);
+double angleCalc(geometry_msgs::Pose2D a_pose, geometry_msgs::Pose2D b_pose) {
+    return std::atan2((a_pose.y - b_pose.y), (a_pose.x - b_pose.x));
+}
 double tangentialDist(geometry_msgs::Pose2D a, geometry_msgs::Pose2D b) {
     return hypot((a.x - b.x), (a.y - b.y));
 }
+Agent goToGoal (Agent &agent) {
+    double angle = angleCalc(agent.getGoalPose(), agent.getCurrPose());
+    angle = angles::shortest_angular_distance(agent.getCurrPose().theta, angle);
+    double dist = tangentialDist(agent.getGoalPose(), agent.getCurrPose());
+    agent.setLinVel(ANGLR_CONST * angle);
+    agent.setAngVel(LIN_CONST * dist);
+    return agent;
+}
+
+
 
 
 /*

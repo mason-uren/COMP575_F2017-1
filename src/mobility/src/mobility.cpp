@@ -165,6 +165,7 @@ void mobilityStateMachine(const ros::TimerEvent &)
              */
             double angle;
             double dist_toAnchor;
+            double dist_toGoal;
             GOAL_ZONE_POSE gz;
             VELOCITY vel = {0, 0};
             geometry_msgs::Pose2D anchor_pose;
@@ -175,6 +176,10 @@ void mobilityStateMachine(const ros::TimerEvent &)
                 dist_toAnchor = agent->distFromAnchor();
             }
             switch (state) {
+                /*
+                 * INITIALIZATION STATE
+                 * 1) Before the rovers have begun to move calculate their relative position to the a share reference point
+                 */
                 case STATE_INIT: {
                     std::cout << "STATE -> INIT" << std::endl;
 
@@ -308,6 +313,7 @@ void mobilityStateMachine(const ros::TimerEvent &)
                     break;
                 }
                 /*
+                 * SEARCH STATE
                  * Drive rovers in outward radial pattern from their initial positions
                  */
                 case STATE_SEARCH: {
@@ -317,78 +323,160 @@ void mobilityStateMachine(const ros::TimerEvent &)
                         search_pose.x = agent->getCurrPose().x * 3;
                         search_pose.y = agent->getCurrPose().y * 3;
                         agent->setGoalPose(search_pose);
-                        double dist_toGoal = agent->distFromGoal();
+                        dist_toGoal = agent->distFromGoal();
                         agent->getLocalization()->setGoalConfidence(dist_toGoal);
                         agent->getLocalization()->incrmtIter();
                         agentMap->updateMap(rover, *agent);
                     }
-                    angle = zoneMap->angleCalc(agent->getGoalPose(), agent->getCurrPose());
-                    angle = angles::shortest_angular_distance(angle, agent->getCurrPose().theta);
-                    double dist = tangentialDist(agent->getGoalPose(), current_location);
-                    if (dist < 0.3) {
+                    angle = angleCalc(agent->getGoalPose(), agent->getCurrPose());
+                    angle = angles::shortest_angular_distance(agent->getCurrPose().theta, angle);
+                    /*
+                     * Is the rover within it's goal location +/- some radial error
+                     * True: set all velocities to 0
+                     */
+                    if (agent->distFromGoal() < 0.1) {
                         agent->setAngVel(0);
                         agent->setLinVel(0);
+                        agent->setState(STATE_PICK_UP);
+                        agentMap->updateMap(rover, *agent);
                     }
+                    /*
+                     * False: keep adjusting
+                     */
                     else {
-                        agent->setAngVel(0.3 * -angle);
-                        agent->setLinVel(0.01 * dist);
+                        agent->setAngVel(ANGLR_CONST * angle);
+                        agent->setLinVel(LIN_CONST * agent->distFromGoal());
                     }
                     agent->getLocalization()->setVelConfidence(agent->getLinVel());
                     agentMap->updateMap(rover, *agent);
                     std::cout << "Search Pose: X <- " << agent->getGoalPose().x << ", Y <- " << agent->getGoalPose().y << std::endl;
-                    std::cout << "Dist to goal: " << dist << std::endl;
+                    std::cout << "Dist to goal: " << agent->distFromGoal() << std::endl;
                     std::cout << "Angle to goal: " << angle << std::endl;
                     break;
                 }
+                /*
+                 * PICKUP STATE
+                 */
                 case STATE_PICK_UP:
+                    std::cout << "STATE -> PICK-UP" << std::endl;
+                    agent->setResource(true);
+                    agent->setState(STATE_FIND_HOME);
+                    agentMap->updateMap(rover, *agent);
                     break;
+                /*
+                 * FIND HOME STATE
+                 */
                 case STATE_FIND_HOME: {
-                    gz = agent->getGZPose();
-                    switch (agent->getDrivewayState()) {
-                        case INIT: {
-                            if (driveway->canEnter((DRIVEWAY_TYPE) agent->getDrivewayState())) {
-                                *agent = driveway->addToDriveway(*agent, ACTIVE);
-//                                agentMap->updateMap(agent->getID(), *agent);
-                            } else {
-                                *agent = driveway->addToDriveway(*agent, WAITING);
-//                                agentMap->updateMap(agent->getID(), *agent);
-                            }
-                            vel.linear = 0;
-                            vel.angular = 0;
-                            break;
-                        }
-                        case ACTIVE: {
-                            // Determine closest zone
-                            zoneMap->checkAvailable();
-                            *agent = zoneMap->getClosestZone(*agent);
-                            agentMap->updateMap(agent->getID(), *agent); // Update map that claims zone
-                            *agent = agentMap->getValue(agent->getID());
-
-                            // Grab critical points for zone
-                            CriticalPoints cps = innerRadius->getCP(agent->getGZPose().zone_ID);
-                            double dist_toZone = tangentialDist(gz.goal_pose, current_location);
-                            angle = zoneMap->angleCalc(gz.goal_pose, current_location);
-                            /*
-                             * If goal zone is not right in front of the agent
-                             */
-                            if (gz.traverse) {
-                                double factor;
-                                double dist_cpL = tangentialDist(cps.leftCP(), current_location);
+                    std::cout << "STATE -> FIND HOME" << std::endl;
+//                    gz = agent->getGZPose();
+                    /*
+                     * Traverse toward the calculated anchor node
+                     * NOTE: we need to change the 'goal_pose' for the agent
+                     */
+                    agent->setGoalPose(agent->getLocalization()->getAnchor());
+                    dist_toAnchor = agent->distFromAnchor();
+                    /*
+                     * Calculate velocites
+                     */
+                    angle = angleCalc(agent->getGoalPose(), agent->getCurrPose());
+                    angle = angles::shortest_angular_distance(agent->getCurrPose().theta, angle);
+                    agent->setAngVel(ANGLR_CONST * angle);
+                    agent->setLinVel(LIN_CONST * agent->distFromGoal());
+                    // TODO: maybe we need a 'goto goal' function; NOTE: possible issue with dynamic distance and angle calculation
+                    if (agent->distFromGoal() <= R3) { // Beginning of Driveway
+                        switch (agent->getDrivewayState()) {
+                            case INIT: {
                                 /*
-                                 * Check if critical point along traversal are near
-                                 * NOTE: I can't remember why I chose to create and check 'getReachedCPS' function
+                                 * Immediately change velocities to zero
                                  */
-                                if (dist_cpL < 0.2 || agent->getReachedCPS()) {
+                                agent->setAngVel(0);
+                                agent->setLinVel(0);
+                                agentMap->updateMap(rover, *agent);
+                                /*
+                                 * Check if we there are any other agents on the driveway
+                                 */
+                                if (driveway->canEnter((DRIVEWAY_TYPE) agent->getDrivewayState())) {
+                                    *agent = driveway->addToDriveway(*agent, ACTIVE);
+                                    agentMap->updateMap(rover, *agent);
+                                } else {
+                                    *agent = driveway->addToDriveway(*agent, WAITING);
+                                    agentMap->updateMap(rover, *agent);
+                                }
+                                break;
+                            }
+                            case ACTIVE: {
+                                // Determine closest zone
+                                zoneMap->checkAvailable();
+                                *agent = zoneMap->getClosestZone(*agent); // GZ Pose is set and wrapped up in the getClosestZone function
+                                agentMap->updateMap(agent->getID(), *agent); // Update map that claims zone
+                                *agent = agentMap->getValue(agent->getID());
+
+                                // Grab critical points for zone
+                                CriticalPoints cps = innerRadius->getCP(agent->getGZPose().zone_ID);
+                                double dist_toZone = tangentialDist(gz.goal_pose, current_location);
+                                angle = zoneMap->angleCalc(gz.goal_pose, current_location);
+                                /*
+                                 * If goal zone is not right in front of the agent
+                                 */
+                                if (gz.traverse) {
+                                    double factor;
+                                    double dist_cpL = tangentialDist(cps.leftCP(), current_location);
                                     /*
-                                     * Change traversal path to traverse to zone garage
-                                     * We need to calc equation of line depicted by critical point and where it meets RZ
+                                     * Check if critical point along traversal are near
+                                     * NOTE: I can't remember why I chose to create and check 'getReachedCPS' function
                                      */
-                                    // Are we at the goal zone
-                                    if (dist_cpL < 0.1) { // TODO: arbitrary value
+                                    if (dist_cpL < 0.2 || agent->getReachedCPS()) {
+                                        /*
+                                         * Change traversal path to traverse to zone garage
+                                         * We need to calc equation of line depicted by critical point and where it meets RZ
+                                         */
+                                        // Are we at the goal zone
+                                        if (dist_cpL < 0.1) { // TODO: arbitrary value
+                                            *agent = driveway->moveAgent(*agent, ACTIVE, GARAGE);
+                                            agentMap->updateMap(agent->getID(), *agent);
+                                        } else if (current_location.theta <
+                                                   angle - TRAVERSE_ERR) { // Left turn; considering angles
+                                            angle = 0.025 / dist_toAnchor; // TODO: arbitrary value
+                                        } else if (current_location.theta >
+                                                   angle + TRAVERSE_ERR) { // Right turn; considering angles
+                                            angle = -0.025 / dist_toAnchor; // TODO: arbitrary value
+                                        } else {
+                                            // Do nothing continue driving forward
+                                            angle = current_location.theta;
+                                        }
+                                        vel.linear = 0.2 * (dist_toZone - +(RZ / 2)); // TODO: arbitrary value
+                                    } else {
+                                        /*
+                                         * Default Traversal
+                                         */
+                                        // Drive till we are in the middle of the driveway
+                                        if (!agent->getInitTraversal()) {
+                                            if (dist_toAnchor > CPR) {
+                                                agent->setInitTraversal(true);
+                                                agentMap->updateMap(agent->getID(), *agent);
+                                            }
+                                            angle = -0.2 / dist_toAnchor; // TODO: arbitrary value
+                                        } else if (dist_toAnchor <= CPR - TRAVERSE_STD) {
+                                            factor = CPR - TRAVERSE_STD - dist_toAnchor;
+                                            angle = (-0.1 / dist_toAnchor) * factor; // TODO: arbitrary value
+                                        } else if (dist_toAnchor >= CPR + TRAVERSE_STD) {
+                                            factor = dist_toAnchor - CPR - TRAVERSE_ERR;
+                                            angle = (0.1 / dist_toAnchor) * factor; // TODO: arbitrary value
+                                        } else {
+                                            angle = 0.1 / dist_toAnchor; // Need to continually turn toward goal poze
+                                        }
+                                        vel.linear = 0.2 * dist_toZone; // TODO: arbitrary value
+                                    }
+                                }
+                                    /*
+                                     * Goal zone is right in front
+                                     */
+                                else {
+                                    if (dist_toZone < 0.1) {
                                         *agent = driveway->moveAgent(*agent, ACTIVE, GARAGE);
                                         agentMap->updateMap(agent->getID(), *agent);
-                                    } else if (current_location.theta <
-                                               angle - TRAVERSE_ERR) { // Left turn; considering angles
+                                    }
+                                    if (current_location.theta < angle - TRAVERSE_ERR) { // Left turn; considering angles
                                         angle = 0.025 / dist_toAnchor; // TODO: arbitrary value
                                     } else if (current_location.theta >
                                                angle + TRAVERSE_ERR) { // Right turn; considering angles
@@ -397,113 +485,73 @@ void mobilityStateMachine(const ros::TimerEvent &)
                                         // Do nothing continue driving forward
                                         angle = current_location.theta;
                                     }
-                                    vel.linear = 0.2 * (dist_toZone - +(RZ / 2)); // TODO: arbitrary value
-                                } else {
-                                    /*
-                                     * Default Traversal
-                                     */
-                                    // Drive till we are in the middle of the driveway
-                                    if (!agent->getInitTraversal()) {
-                                        if (dist_toAnchor > CPR) {
-                                            agent->setInitTraversal(true);
-                                            agentMap->updateMap(agent->getID(), *agent);
-                                        }
-                                        angle = -0.2 / dist_toAnchor; // TODO: arbitrary value
-                                    } else if (dist_toAnchor <= CPR - TRAVERSE_STD) {
-                                        factor = CPR - TRAVERSE_STD - dist_toAnchor;
-                                        angle = (-0.1 / dist_toAnchor) * factor; // TODO: arbitrary value
-                                    } else if (dist_toAnchor >= CPR + TRAVERSE_STD) {
-                                        factor = dist_toAnchor - CPR - TRAVERSE_ERR;
-                                        angle = (0.1 / dist_toAnchor) * factor; // TODO: arbitrary value
-                                    } else {
-                                        angle = 0.1 / dist_toAnchor; // Need to continually turn toward goal poze
-                                    }
-                                    vel.linear = 0.2 * dist_toZone; // TODO: arbitrary value
+                                    vel.linear = 0.2 * (dist_toZone + (RZ / 2)); // TODO: arbitrary value
                                 }
+                                vel.angular = angle;
+                                break;
                             }
                                 /*
-                                 * Goal zone is right in front
+                                 * Check if the rover is allowed to enter the driveway
                                  */
-                            else {
-                                if (dist_toZone < 0.1) {
-                                    *agent = driveway->moveAgent(*agent, ACTIVE, GARAGE);
-                                    agentMap->updateMap(agent->getID(), *agent);
-                                }
-                                if (current_location.theta < angle - TRAVERSE_ERR) { // Left turn; considering angles
-                                    angle = 0.025 / dist_toAnchor; // TODO: arbitrary value
-                                } else if (current_location.theta >
-                                           angle + TRAVERSE_ERR) { // Right turn; considering angles
-                                    angle = -0.025 / dist_toAnchor; // TODO: arbitrary value
-                                } else {
-                                    // Do nothing continue driving forward
-                                    angle = current_location.theta;
-                                }
-                                vel.linear = 0.2 * (dist_toZone + (RZ / 2)); // TODO: arbitrary value
-                            }
-                            vel.angular = angle;
-                            break;
-                        }
-                            /*
-                             * Check if the rover is allowed to enter the driveway
-                             */
-                        case WAITING: {
-                            if (driveway->canEnter((DRIVEWAY_TYPE) agent->getDrivewayState())) {
-                                *agent = driveway->moveAgent(*agent, WAITING, ACTIVE);
-                                agentMap->updateMap(agent->getID(), *agent);
-                            }
-                            break;
-                        }
-                            /*
-                             * We need to turn the rover to face home
-                             */
-                        case GARAGE: {
-                            angle = zoneMap->angleCalc(gz.goal_pose, current_location);
-                            if (current_location.theta < angle - ORIENTATION_ERR) { // Left turn; considering angles
-                                angle = 0.2 / dist_toAnchor; // TODO: arbitrary value
-                            } else if (current_location.theta >
-                                       angle + ORIENTATION_ERR) { // Right turn; considering angles
-                                angle = -0.2 / dist_toAnchor; // TODO: arbitrary value
-                            } else {
+                            case WAITING: {
                                 if (driveway->canEnter((DRIVEWAY_TYPE) agent->getDrivewayState())) {
-                                    *agent = driveway->moveAgent(*agent, GARAGE, DELIVERY);
+                                    *agent = driveway->moveAgent(*agent, WAITING, ACTIVE);
                                     agentMap->updateMap(agent->getID(), *agent);
                                 }
+                                break;
                             }
-                            vel.linear = 0.001;
-                            vel.angular = angle;
-                            break;
-                        }
-                        case DELIVERY: {
-                            /*
-                             * The agent has reached the drop off point
-                             * 1) Transition to DROP_OFF, which should have no properties except to drop the cube
-                             * 2) DROP_OFF passes back after cube is released, but no movement is to be made by DROP_OFF,
-                             *      DROP_OFF needs to mark that the agent no longer has a resource
-                             */
-                            angle = zoneMap->angleCalc(gz.goal_pose, current_location);
-                            if (dist_toAnchor < 0.2) {
-                                vel.linear = 0.001;
-                                angle = current_location.theta;
-                                // Pass to DROP_OFF
-                                agent->setState(STATE_DROP_OFF);
-                                agentMap->updateMap(agent->getID(), *agent);
-                            } else {
-                                if (current_location.theta < angle - TRAVERSE_ERR) { // Left turn; considering angles
-                                    angle = 0.05 / dist_toAnchor; // TODO: arbitrary value
+                                /*
+                                 * We need to turn the rover to face home
+                                 */
+                            case GARAGE: {
+                                angle = zoneMap->angleCalc(gz.goal_pose, current_location);
+                                if (current_location.theta < angle - ORIENTATION_ERR) { // Left turn; considering angles
+                                    angle = 0.2 / dist_toAnchor; // TODO: arbitrary value
                                 } else if (current_location.theta >
-                                           angle + TRAVERSE_ERR) { // Right turn; considering angles
-                                    angle = -0.05 / dist_toAnchor; // TODO: arbitrary value
+                                           angle + ORIENTATION_ERR) { // Right turn; considering angles
+                                    angle = -0.2 / dist_toAnchor; // TODO: arbitrary value
                                 } else {
-                                    // Do nothing continue driving forward
-                                    angle = current_location.theta;
+                                    if (driveway->canEnter((DRIVEWAY_TYPE) agent->getDrivewayState())) {
+                                        *agent = driveway->moveAgent(*agent, GARAGE, DELIVERY);
+                                        agentMap->updateMap(agent->getID(), *agent);
+                                    }
                                 }
-                                vel.linear = 0.2 * dist_toAnchor;
+                                vel.linear = 0.001;
+                                vel.angular = angle;
+                                break;
                             }
-                            vel.angular = angle;
-                            break;
+                            case DELIVERY: {
+                                /*
+                                 * The agent has reached the drop off point
+                                 * 1) Transition to DROP_OFF, which should have no properties except to drop the cube
+                                 * 2) DROP_OFF passes back after cube is released, but no movement is to be made by DROP_OFF,
+                                 *      DROP_OFF needs to mark that the agent no longer has a resource
+                                 */
+                                angle = zoneMap->angleCalc(gz.goal_pose, current_location);
+                                if (dist_toAnchor < 0.2) {
+                                    vel.linear = 0.001;
+                                    angle = current_location.theta;
+                                    // Pass to DROP_OFF
+                                    agent->setState(STATE_DROP_OFF);
+                                    agentMap->updateMap(agent->getID(), *agent);
+                                } else {
+                                    if (current_location.theta < angle - TRAVERSE_ERR) { // Left turn; considering angles
+                                        angle = 0.05 / dist_toAnchor; // TODO: arbitrary value
+                                    } else if (current_location.theta >
+                                               angle + TRAVERSE_ERR) { // Right turn; considering angles
+                                        angle = -0.05 / dist_toAnchor; // TODO: arbitrary value
+                                    } else {
+                                        // Do nothing continue driving forward
+                                        angle = current_location.theta;
+                                    }
+                                    vel.linear = 0.2 * dist_toAnchor;
+                                }
+                                vel.angular = angle;
+                                break;
+                            }
+                            default:
+                                break;
                         }
-                        default:
-                            break;
                     }
                     break;
                 }
@@ -756,10 +804,6 @@ void headingHandler(const std_msgs::Float64MultiArray::ConstPtr &message) { // T
 //    std_msgs::String lP = localPose(current_rover);
 //    agentMap->getValue(current_rover).setLocalPose(std::strtod(lP.data.c_str(), &end));
 //    end = NULL; // clear pointers
-
-}
-
-double goalCalc(Agent agent) {
 
 }
 
