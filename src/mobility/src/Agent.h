@@ -18,7 +18,11 @@ typedef enum {
 class Agent : private Localization, public AgentStates {
 private:
     int agent_ID;
+    double angular_vel;
+    double linear_vel;
+    geometry_msgs::Pose2D previous_pose;
     geometry_msgs::Pose2D current_pose;
+    geometry_msgs::Pose2D goal_pose;
     Localization *localization;
     GOAL_ZONE_POSE goal_zone;
     double avg_global_theta;
@@ -31,8 +35,8 @@ private:
     bool initTraversal;
 
 public:
-    Agent (int ID, geometry_msgs::Pose2D pose) : AgentStates(STATE_INIT), agent_ID(ID), current_pose(pose),
-                                                 driveway_state(0), reachedCPS(false), hasResource(false),
+    Agent (int &ID, geometry_msgs::Pose2D &pose) : AgentStates(STATE_INIT), agent_ID(ID), angular_vel(0), linear_vel(0),
+                                                 current_pose(pose), driveway_state(0), reachedCPS(false), hasResource(false),
                                                  initTraversal(false), avg_global_theta(0), avg_local_theta(0) {
         geometry_msgs::Pose2D temp_pose;
         std::string init_string;
@@ -40,6 +44,8 @@ public:
         temp_pose.y = 0;
         temp_pose.theta = 0;
 //        init_string.data = "N/A";
+        this->previous_pose = temp_pose;
+        this->goal_pose = temp_pose;
         this->goal_zone = (GOAL_ZONE_POSE) {"N/A", true, temp_pose};
         this->localization = new Localization(this->current_pose, temp_pose);
     }
@@ -49,8 +55,18 @@ public:
     /*
      * Setters
      */
+    void setAngVel(double vel) {
+        this->angular_vel = vel;
+    }
+    void setLinVel(double vel) {
+        this->linear_vel = vel;
+    }
     void setCurrPose(geometry_msgs::Pose2D p) {
+        this->previous_pose = this->current_pose;
         this->current_pose = p;
+    }
+    void setGoalPose(geometry_msgs::Pose2D p) {
+        this->goal_pose = p;
     }
     void setGZPose(std::string name, bool traversal, geometry_msgs::Pose2D gz) {
         this->goal_zone.zone_ID = name;
@@ -95,8 +111,20 @@ public:
     int getID() {
         return this->agent_ID;
     }
+    double getAngVel() {
+        return this->angular_vel;
+    }
+    double getLinVel() {
+        return this->linear_vel;
+    }
     geometry_msgs::Pose2D getCurrPose() {
         return this->current_pose;
+    }
+    geometry_msgs::Pose2D getPrevPose() {
+        return this->previous_pose;
+    }
+    geometry_msgs::Pose2D getGoalPose() {
+        return this->goal_pose;
     }
     double getGlobalTheta() {
         return this->avg_global_theta;

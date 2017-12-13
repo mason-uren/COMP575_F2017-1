@@ -90,6 +90,7 @@ std_msgs::String globalHeading ();
 void neighbors (int name);
 std_msgs::String localHeading (int name);
 std_msgs::String localPose (int name);
+double goalCalc (Agent agent);
 double tangentialDist(geometry_msgs::Pose2D a, geometry_msgs::Pose2D b) {
     return hypot((a.x - b.x), (a.y - b.y));
 }

@@ -172,7 +172,7 @@ void mobilityStateMachine(const ros::TimerEvent &)
             std::cout << "(ID) ---> " << agent->getID() << ", Rover <== " << rover << std::endl;
             int state = agent->getState();
             if (agent->getLocalization()->isAnchor()) {
-
+                dist_toAnchor = agent->distFromAnchor();
             }
             switch (state) {
                 case STATE_INIT: {
@@ -232,6 +232,7 @@ void mobilityStateMachine(const ros::TimerEvent &)
                                 current_location.x += offset.x;
                                 current_location.y += offset.y;
                                 agent->setCurrPose(current_location);
+                                agentMap->updateMap(rover, *agent);
                                 // Iterate through all agents except self
                                 for (std::map<int, Agent>::iterator it = agentMap_copy.begin();
                                      it != agentMap_copy.end(); ++it) {
@@ -244,6 +245,7 @@ void mobilityStateMachine(const ros::TimerEvent &)
                                 y_avg /= agentMap_copy.size();
                                 agent->getLocalization()->addMidpoint(x_avg, y_avg);
                                 agent->getLocalization()->incrmtIter();
+                                agentMap->updateMap(rover, *agent);
                             }
                             /*
                              * Average the midpoints into an estimated pose
@@ -261,6 +263,7 @@ void mobilityStateMachine(const ros::TimerEvent &)
                                 agent->getLocalization()->setEstimated(x_avg, y_avg);
                                 std::cout << "Estimated Pose = {" << agent->getLocalization()->getEstimated().x << ", " << agent->getLocalization()->getEstimated().y << "}" << std::endl;
                                 agent->getLocalization()->incrmtIter();
+                                agentMap->updateMap(rover, *agent);
                             }
                             /*
                              * Set anchor pose
@@ -276,6 +279,7 @@ void mobilityStateMachine(const ros::TimerEvent &)
                                 agent->getLocalization()->setAnchor(x_avg, y_avg);
                                 agent->getLocalization()->advanceSubstate();
                                 agent->getLocalization()->incrmtIter();
+                                agentMap->updateMap(rover, *agent);
                             }
                             break;
                         }
@@ -288,11 +292,12 @@ void mobilityStateMachine(const ros::TimerEvent &)
                          */
                         case WEIGHTING:
                             std::cout << "SUBSTATE ---> WEIGHTING" << std::endl;
-                            agent->getLocalization()->setConfidence(dist_toAnchor);
+                            agent->getLocalization()->setAnchConfidence(dist_toAnchor);
                             agent->getLocalization()->advanceSubstate();
                             agent->getLocalization()->resetIter();
                             agent->getLocalization()->setSubstate(BEGINNING);
                             agent->setState(STATE_SEARCH);
+                            agentMap->updateMap(rover, *agent);
                             break;
                         default:
                             break;
@@ -309,18 +314,20 @@ void mobilityStateMachine(const ros::TimerEvent &)
                     if (agent->getLocalization()->getIter() == 0) {
                         search_pose.x = current_location.x * 3;
                         search_pose.y = current_location.y * 3;
+                        agent->setGoalPose(search_pose);
                         agent->getLocalization()->incrmtIter();
+                        agentMap->updateMap(rover, *agent);
                     }
-                    angle = zoneMap->angleCalc(search_pose, current_location);
+                    angle = zoneMap->angleCalc(agent->getGoalPose(), current_location);
                     angle = angles::shortest_angular_distance(angle, agent->getCurrPose().theta);
-                    double dist = tangentialDist(current_location, search_pose);
-                    if (dist < 0.1) {
-                        vel.linear = 0;
-                        vel.angular = 0;
+                    double dist = tangentialDist(agent->getGoalPose(), current_location);
+                    if (dist < 0.3) {
+                        agent->setAngVel(0);
+                        agent->setLinVel(0);
                     }
                     else {
-                        vel.linear = 0.02 * dist;
-                        vel.angular = 0.07 * (angle);
+                        agent->setAngVel(0.07 * angle);
+                        agent->setLinVel(0.02 * dist);
                     }
                     std::cout << "Search Pose: X <- " << search_pose.x << ", Y <- " << search_pose.y << std::endl;
                     std::cout << "Dist to goal: " << dist << std::endl;
@@ -535,9 +542,9 @@ void mobilityStateMachine(const ros::TimerEvent &)
             /*
              * Testing velocities
              */
-            double angular_velocity = vel.angular;
+            double angular_velocity = agent->getAngVel();
             std::cout << "Angular velecity: " << angular_velocity << std::endl;
-            double linear_velocity = vel.linear;
+            double linear_velocity = agent->getLinVel();
             std::cout << "Linear velocity: " << linear_velocity << std::endl;
             setVelocity(linear_velocity, angular_velocity);
             break;
@@ -693,9 +700,16 @@ void headingHandler(const std_msgs::Float64MultiArray::ConstPtr &message) { // T
     }
     else {
         *agent = agentMap->getValue(rover);
+        if (agent->getState() != STATE_INIT) {
+//            double angle = std::atan2()
+        }
         agent->setCurrPose(msg_pose);
         agentMap->updateMap(rover, *agent);
     }
+
+
+
+
 
 
 
@@ -721,6 +735,10 @@ void headingHandler(const std_msgs::Float64MultiArray::ConstPtr &message) { // T
 //    std_msgs::String lP = localPose(current_rover);
 //    agentMap->getValue(current_rover).setLocalPose(std::strtod(lP.data.c_str(), &end));
 //    end = NULL; // clear pointers
+
+}
+
+double goalCalc(Agent agent) {
 
 }
 

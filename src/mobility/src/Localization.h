@@ -17,13 +17,16 @@ private:
     geometry_msgs::Pose2D estimated_pose;
     geometry_msgs::Pose2D anchor_node;
     bool anchor_set;
-    double confidence;
+    double anchor_confidence;
+    double goal_confidence;
+    double vel_confidence;
     int iteration;
     LOC_SUBSTATE substate;
 
 public:
     Localization (geometry_msgs::Pose2D curr, geometry_msgs::Pose2D anchor) :
-            anchor_node(anchor), confidence(0), iteration(0), substate(ANCHORING), anchor_set(false) {}
+            anchor_node(anchor), anchor_confidence(0), goal_confidence(0), vel_confidence(0),
+            iteration(0), substate(ANCHORING), anchor_set(false) {}
     Localization () {}
 
     /*
@@ -42,12 +45,12 @@ public:
         this->anchor_node = pose;
         this->anchor_set = true;
     }
-    void setConfidence(double dist_toAnchor) {
+    void setAnchConfidence(double dist_toAnchor) {
         if (dist_toAnchor < 0.01) {
-            this->confidence = 1;
+            this->anchor_confidence = 1;
         }
         else {
-            this->confidence = 1 / dist_toAnchor;
+            this->anchor_confidence = 1 / dist_toAnchor;
         }
     }
     void incrmtIter() {
@@ -85,8 +88,8 @@ public:
     geometry_msgs::Pose2D getAnchor() {
         return this->anchor_node;
     }
-    double getConfidence() {
-        return this->confidence;
+    double getAnchConfidence() {
+        return this->anchor_confidence;
     }
     int getIter() {
         return this->iteration;
