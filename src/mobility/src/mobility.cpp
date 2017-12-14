@@ -139,13 +139,7 @@ void mobilityStateMachine(const ros::TimerEvent &)
         case STATE_MACHINE_TRANSLATE:
         {
             state_machine_msg.data = "TRANSLATING";//, " + converter.str();
-//            float angular_velocity = 0.2;
-//            float linear_velocity = 0.1;
-//            double angular_velocity = TUNING_CONST * (rover_hash[rover].avg_local_theta - current_location.theta);
             double angular_velcocity = TUNING_CONST * (rover_hash[rover].leader_theta - current_location.theta);
-//            double angular_velocity = 0.3 * (rover_hash[rover].avg_local_pose - current_location.theta) +
-//                    0.3 * (rover_hash[rover].avg_local_theta - current_location.theta) +
-//                    0.15 * (rover_hash[rover].separation - current_location.theta);
             std::cout << "Angular velecity: " << angular_velcocity << std::endl;
             float linear_velocity = 0.1;
             setVelocity(linear_velocity, angular_velcocity);
@@ -296,33 +290,6 @@ void headingHandler(const std_msgs::Float64MultiArray::ConstPtr &message) {
     RoverPose rover_data(msg_pose);
 //    Populate Hash
     rover_hash[current_rover] = rover_data;
-
-//    Call globalHeading
-    std_msgs::String gH = globalHeading();
-    globalAverageHeading.publish(gH);
-    char *end;
-    rover_hash[current_rover].avg_global_theta = std::strtod(gH.data.c_str(), &end); // Convert to double
-    end = NULL; // clear pointer
-
-//    Call neighbors
-    neighbors(current_rover);
-
-//    Call localHeading
-    std_msgs::String lH = localHeading((int) message->data[0]);
-    localAverageHeading.publish(lH);
-    rover_hash[current_rover].avg_local_theta = std::strtod(lH.data.c_str(), &end);
-    end = NULL; // clear pointer
-
-//    Call localPose
-    std_msgs::String lP = localPose((int)  message->data[0]);
-    rover_hash[current_rover].avg_local_pose = std::strtod(lP.data.c_str(), &end);
-    end = NULL; // clear pointers
-
-//    Call separation
-    std_msgs::String sep = separation((int) message->data[0]);
-    rover_hash[current_rover].separation = std::strtod(sep.data.c_str(), &end);
-    end = NULL; // clear pointers
-
 //    Leader Selection
     leaderSelection((int) message->data[0]);
     std::cout << "LEADER ---> " << rover_hash[current_rover].new_lead << std::endl;
@@ -359,135 +326,5 @@ void leaderSelection (int name) {
         }
     }
 
-}
-
-std_msgs::String globalHeading (){
-    char buf[256];
-    static const int arr[] = {0,0}; // Default bad values
-    std::vector<double> thetaG(arr, arr + sizeof(arr) / sizeof(arr[0]));
-    std_msgs::String content;
-    double gAH;
-//    Iterate through hash and populate thetaG with theta values
-    for (std::map<int, RoverPose>::iterator it = rover_hash.begin(); it != rover_hash.end(); ++it){
-        thetaG.at(0) += cos(it->second.rover_pose.theta);
-        thetaG.at(1) += sin(it->second.rover_pose.theta);
-    }
-    thetaG.at(0) /= rover_hash.size();
-    thetaG.at(1) /= rover_hash.size();
-    gAH = std::atan2(thetaG[1], thetaG[0]);
-
-//    Format string
-    snprintf(buf, 256, "%lf", gAH);
-    content.data = string(buf);
-    memset(buf, 0, 255); // Clear char array
-
-    return content;
-}
-
-void neighbors (int name) {
-//    Empty neighbors vector
-    for (std::map<int, RoverPose>::iterator it = rover_hash.begin(); it != rover_hash.end(); ++it){
-        rover_hash[it->first].neighbors.clear();
-    }
-//    Hold constant the current rover
-    RoverPose curr_rover = rover_hash[name];
-//    Iterate through remaining rovers
-    for (std::map<int, RoverPose>::iterator it = rover_hash.begin(); it != rover_hash.end(); ++it){
-        if ((it->first != name) && (hypot(curr_rover.rover_pose.x - it->second.rover_pose.x, curr_rover.rover_pose.y - it->second.rover_pose.y) < NEIGH_DIST)){
-            rover_hash[name].neighbors.push_back(it->first); // save the neighbors to the constant rover
-            rover_hash[it->first].neighbors.push_back(name); // save the neighbors to the other rover
-        }
-    }
-}
-
-
-std_msgs::String localHeading (int name) {
-    char buf[256];
-    static const int arr[] = {0,0}; // Default bad values
-    std::vector<double> thetaG(arr, arr + sizeof(arr) / sizeof(arr[0]));
-    std_msgs::String content;
-    double lAH;
-    std::vector<double> rNeighb;
-
-//    Iterate through respective neighbors vector
-    for (std::vector<int>::iterator it = rover_hash[name].neighbors.begin(); it != rover_hash[name].neighbors.end(); ++it){
-        rNeighb.push_back(*it);
-    }
-
-//    Iterator through neighboring rovers pose
-    for (std::vector<double>::iterator it = rNeighb.begin(); it != rNeighb.end(); ++it){
-        thetaG.at(0) += cos(rover_hash[*it].rover_pose.theta);
-        thetaG.at(1) += sin(rover_hash[*it].rover_pose.theta);
-    }
-    thetaG.at(0) /= thetaG.size();
-    thetaG.at(1) /= thetaG.size();
-    lAH = std::atan2(thetaG[1], thetaG[0]);
-
-//    Format string
-    snprintf(buf, 256, "%lf", lAH);
-    content.data = string(buf);
-    memset(buf, 0, 255); // Clear char array
-
-    return content;
-}
-
-std_msgs::String localPose (int name) {
-    char buf[256];
-    static const int arr[] = {0,0}; // Default bad values
-    std::vector<double> thetaG(arr, arr + sizeof(arr) / sizeof(arr[0]));
-    std_msgs::String content;
-    double lAP;
-    std::vector<double> rNeighb;
-
-//    Iterate through respective neighbors vector
-    for (std::vector<int>::iterator it = rover_hash[name].neighbors.begin(); it != rover_hash[name].neighbors.end(); ++it) {
-        rNeighb.push_back(*it);
-    }
-
-//    Iterate through neighboring rovers pose
-    for (std::vector<double>::iterator it = rNeighb.begin(); it != rNeighb.end(); ++it) {
-        thetaG.at(0) += rover_hash[*it].rover_pose.x;
-        thetaG.at(1) += rover_hash[*it].rover_pose.y;
-    }
-    thetaG.at(0) /= thetaG.size();
-    thetaG.at(1) /= thetaG.size();
-    lAP = std::atan2(thetaG[1], thetaG[0]);
-
-//    Format String
-    snprintf(buf, 256, "%lf", lAP);
-    content.data = string(buf);
-    memset(buf, 0, 255); // clear char array
-
-    return content;
-}
-
-std_msgs::String separation (int name)  {
-    char buf[256];
-    static const int arr[] = {0,0}; // Default bad values
-    std::vector<double> thetaG(arr, arr + sizeof(arr) / sizeof(arr[0]));
-    std_msgs::String content;
-    double sep;
-    std::vector<double> rNeighb;
-
-//    Iterate through respective neighbors vector
-    for (std::vector<int>::iterator it = rover_hash[name].neighbors.begin(); it != rover_hash[name].neighbors.end(); ++it) {
-        rNeighb.push_back(*it);
-    }
-
-//    Iterate through neighboring rovers' pose and steer away
-    for (std::vector<double>::iterator it = rNeighb.begin(); it != rNeighb.end(); ++it) {
-        thetaG.at(0) += rover_hash[*it].rover_pose.x - current_location.x;
-        thetaG.at(1) += rover_hash[*it].rover_pose.y - current_location.y;
-    }
-    thetaG.at(0) /= -thetaG.size();
-    thetaG.at(1) /= -thetaG.size();
-    sep = std::atan2(thetaG[1], thetaG[0]);
-
-//    Format String
-    snprintf(buf, 256, "%lf", sep);
-    content.data = string(buf);
-    memset(buf, 0, 255); // clear char array
-
-    return content;
 }
 
