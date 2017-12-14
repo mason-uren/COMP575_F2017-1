@@ -20,6 +20,7 @@ class RoverPose {
         double avg_local_theta;
         double avg_local_pose;
         double separation;
+        double leader_theta;
         int new_lead;
         std::vector<int> possible_lead;
         std::vector<int> neighbors;

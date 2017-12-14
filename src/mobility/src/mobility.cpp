@@ -142,9 +142,10 @@ void mobilityStateMachine(const ros::TimerEvent &)
 //            float angular_velocity = 0.2;
 //            float linear_velocity = 0.1;
 //            double angular_velocity = TUNING_CONST * (rover_hash[rover].avg_local_theta - current_location.theta);
-            double angular_velocity = 0.3 * (rover_hash[rover].avg_local_pose - current_location.theta) +
-                    0.3 * (rover_hash[rover].avg_local_theta - current_location.theta) +
-                    0.15 * (rover_hash[rover].separation - current_location.theta);
+            double angular_velcocity = TUNING_CONST * (rover_hash[rover].leader_theta - current_location.theta);
+//            double angular_velocity = 0.3 * (rover_hash[rover].avg_local_pose - current_location.theta) +
+//                    0.3 * (rover_hash[rover].avg_local_theta - current_location.theta) +
+//                    0.15 * (rover_hash[rover].separation - current_location.theta);
             std::cout << "Angular velecity: " << angular_velocity << std::endl;
             float linear_velocity = 0.1;
             setVelocity(linear_velocity, angular_velocity);
@@ -330,18 +331,22 @@ void leaderSelection (int name) {
     std::vector<int> rovers = rover_hash[name].possible_lead;
     // Iterate through the hash
     for (std::map<int, RoverPose>::iterator it = rover_hash.begin(); it != rover_hash.end(); ++it) {
-        if (it->first != name) {
-            if (std::find(it->second.possible_lead.begin(), it->second.possible_lead.end(), name) ==
-                it->second.possible_lead.end()) { // Does not contain
-                rover_hash[name].possible_lead.push_back(it->first);
-                rover_hash[it->first].possible_lead.push_back(name);
-            }
+        // Share rover IDs
+        if (std::find(it->second.possible_lead.begin(), it->second.possible_lead.end(), name) ==
+            it->second.possible_lead.end()) { // Does not contain
+            rover_hash[name].possible_lead.push_back(it->first);
+            rover_hash[it->first].possible_lead.push_back(name);
         }
+        // If we've added each rover, make the highest the leader
         if (it->second.possible_lead.size() == rover_hash.size()) {
             for (std::vector<int>::iterator it = rover_hash[it->first].possible_lead.begin(); it != rover_hash[it->first].possible_lead.end(); ++it) {
                 if (name <= it->first) {
+                    // Declare new leader
                     rover_hash[name].new_lead = F;
                     rover_hash[it->first].new_lead = T;
+                    // Record leader heading
+                    rover_hash[name].leader_theta = it->second.rover_pose.theta;
+                    rover_hash[it->first].leader_theta = it->second.rover_pose.theta;
                 }
             }
         }
