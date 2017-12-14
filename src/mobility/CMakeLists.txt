@@ -31,6 +31,7 @@ add_executable(
 	src/TranslationalController.cpp
 	src/SearchController.cpp
 	src/TargetState.cpp
+	src/RoverPose.h
 )
 
 add_dependencies(mobility ${catkin_EXPORTED_TARGETS})

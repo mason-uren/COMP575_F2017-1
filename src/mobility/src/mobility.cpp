@@ -321,6 +321,27 @@ void headingHandler(const std_msgs::Float64MultiArray::ConstPtr &message) {
     std_msgs::String sep = separation((int) message->data[0]);
     rover_hash[current_rover].separation = std::strtod(sep.data.c_str(), &end);
     end = NULL; // clear pointers
+
+//    Leader Selection
+    leaderSelection((int) message->data[0]);
+}
+
+void leaderSelection (int name) {
+    std::vector<int> rovers = rover_hash[name].possible_lead;
+    // Iterate through the hash
+    for (std::map<int, RoverPose>::iterator it = rover_hash.begin(); it != rover_hash.end(); ++it) {
+        if (it->first != name) {
+            if (std::find(it->second.possible_lead.begin(), it->second.possible_lead.end(), name) ==
+                it->second.possible_lead.end()) { // Does not contain
+                rover_hash[name].possible_lead.push_back(it->first);
+                rover_hash[it->first].possible_lead.push_back(name);
+            }
+        }
+        if (it->second.possible_lead.size() == rover_hash.size()) {
+            
+        }
+    }
+
 }
 
 std_msgs::String globalHeading (){
