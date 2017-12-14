@@ -338,7 +338,12 @@ void leaderSelection (int name) {
             }
         }
         if (it->second.possible_lead.size() == rover_hash.size()) {
-            
+            for (std::vector<int>::iterator it = rover_hash[it->first].possible_lead.begin(); it != rover_hash[it->first].possible_lead.end(); ++it) {
+                if (name <= it->first) {
+                    rover_hash[name].new_lead = F;
+                    rover_hash[it->first].new_lead = T;
+                }
+            }
         }
     }
 
