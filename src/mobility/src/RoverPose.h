@@ -9,7 +9,7 @@
 
 typedef enum {
     F = 0, T, UNKNOWN
-};
+} NEW_LEAD;
 
 class RoverPose {
 
@@ -21,11 +21,11 @@ class RoverPose {
         double avg_local_pose;
         double separation;
         double leader_theta;
-        int new_lead;
+        NEW_LEAD new_lead;
         std::vector<int> possible_lead;
         std::vector<int> neighbors;
 
-        explicit RoverPose (geometry_msgs::Pose2D pose) : rover_pose(pose), new_lead(UNKNOWN){
+        explicit RoverPose (geometry_msgs::Pose2D pose) : rover_pose(pose) {
             static const int arr[] = {-1,-1,-1}; // Default bad values
             this->neighbors = std::vector<int>(arr, arr + sizeof(arr) / sizeof(arr[0]));
         }

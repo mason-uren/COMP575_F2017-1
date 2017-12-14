@@ -146,9 +146,9 @@ void mobilityStateMachine(const ros::TimerEvent &)
 //            double angular_velocity = 0.3 * (rover_hash[rover].avg_local_pose - current_location.theta) +
 //                    0.3 * (rover_hash[rover].avg_local_theta - current_location.theta) +
 //                    0.15 * (rover_hash[rover].separation - current_location.theta);
-            std::cout << "Angular velecity: " << angular_velocity << std::endl;
+            std::cout << "Angular velecity: " << angular_velcocity << std::endl;
             float linear_velocity = 0.1;
-            setVelocity(linear_velocity, angular_velocity);
+            setVelocity(linear_velocity, angular_velcocity);
             break;
         }
         default:
@@ -325,10 +325,11 @@ void headingHandler(const std_msgs::Float64MultiArray::ConstPtr &message) {
 
 //    Leader Selection
     leaderSelection((int) message->data[0]);
+    std::cout << "LEADER ---> " << rover_hash[current_rover].new_lead << std::endl;
+
 }
 
 void leaderSelection (int name) {
-    std::vector<int> rovers = rover_hash[name].possible_lead;
     // Iterate through the hash
     for (std::map<int, RoverPose>::iterator it = rover_hash.begin(); it != rover_hash.end(); ++it) {
         // Share rover IDs
@@ -338,15 +339,21 @@ void leaderSelection (int name) {
             rover_hash[it->first].possible_lead.push_back(name);
         }
         // If we've added each rover, make the highest the leader
-        if (it->second.possible_lead.size() == rover_hash.size()) {
-            for (std::vector<int>::iterator it = rover_hash[it->first].possible_lead.begin(); it != rover_hash[it->first].possible_lead.end(); ++it) {
-                if (name <= it->first) {
+        std::vector<int> rovers = rover_hash[name].possible_lead;
+        if (rovers.size() == rover_hash.size()) {
+
+            for (std::vector<int>::iterator iter = rovers.begin(); iter != rovers.end(); ++iter) {
+                if (name > *iter) {
                     // Declare new leader
-                    rover_hash[name].new_lead = F;
-                    rover_hash[it->first].new_lead = T;
+                    rover_hash[name].new_lead = T;
+                    rover_hash[*iter].new_lead = F;
                     // Record leader heading
-                    rover_hash[name].leader_theta = it->second.rover_pose.theta;
-                    rover_hash[it->first].leader_theta = it->second.rover_pose.theta;
+                    rover_hash[name].leader_theta = rover_hash[*iter].rover_pose.theta;
+                    rover_hash[*iter].leader_theta = rover_hash[*iter].rover_pose.theta;
+                }
+                else if (name == *iter) {
+                    rover_hash[name].new_lead = T;
+                    rover_hash[name].leader_theta = rover_hash[name].rover_pose.theta;
                 }
             }
         }
