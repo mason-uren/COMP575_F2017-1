@@ -139,16 +139,12 @@ void mobilityStateMachine(const ros::TimerEvent &)
         case STATE_MACHINE_TRANSLATE:
         {
             state_machine_msg.data = "TRANSLATING";//, " + converter.str();
-//            float angular_velocity = 0.2;
-//            float linear_velocity = 0.1;
-//            double angular_velocity = TUNING_CONST * (rover_hash[rover].avg_local_theta - current_location.theta);
-            double angular_velcocity = TUNING_CONST * (rover_hash[rover].leader_theta - current_location.theta);
-//            double angular_velocity = 0.3 * (rover_hash[rover].avg_local_pose - current_location.theta) +
-//                    0.3 * (rover_hash[rover].avg_local_theta - current_location.theta) +
-//                    0.15 * (rover_hash[rover].separation - current_location.theta);
-            std::cout << "Angular velecity: " << angular_velcocity << std::endl;
+            double angular_velocity = 0.3 * (rover_hash[rover].avg_local_pose - current_location.theta) +
+                    0.3 * (rover_hash[rover].avg_local_theta - current_location.theta) +
+                    0.1 * (rover_hash[rover].separation - current_location.theta);
+            std::cout << "Angular velecity: " << angular_velocity << std::endl;
             float linear_velocity = 0.1;
-            setVelocity(linear_velocity, angular_velcocity);
+            setVelocity(linear_velocity, angular_velocity);
             break;
         }
         default:
@@ -323,43 +319,8 @@ void headingHandler(const std_msgs::Float64MultiArray::ConstPtr &message) {
     rover_hash[current_rover].separation = std::strtod(sep.data.c_str(), &end);
     end = NULL; // clear pointers
 
-//    Leader Selection
-    leaderSelection((int) message->data[0]);
-    std::cout << "LEADER ---> " << rover_hash[current_rover].new_lead << std::endl;
-
 }
 
-void leaderSelection (int name) {
-    // Iterate through the hash
-    for (std::map<int, RoverPose>::iterator it = rover_hash.begin(); it != rover_hash.end(); ++it) {
-        // Share rover IDs
-        if (std::find(it->second.possible_lead.begin(), it->second.possible_lead.end(), name) ==
-            it->second.possible_lead.end()) { // Does not contain
-            rover_hash[name].possible_lead.push_back(it->first);
-            rover_hash[it->first].possible_lead.push_back(name);
-        }
-        // If we've added each rover, make the highest the leader
-        std::vector<int> rovers = rover_hash[name].possible_lead;
-        if (rovers.size() == rover_hash.size()) {
-
-            for (std::vector<int>::iterator iter = rovers.begin(); iter != rovers.end(); ++iter) {
-                if (name > *iter) {
-                    // Declare new leader
-                    rover_hash[name].new_lead = T;
-                    rover_hash[*iter].new_lead = F;
-                    // Record leader heading
-                    rover_hash[name].leader_theta = rover_hash[*iter].rover_pose.theta;
-                    rover_hash[*iter].leader_theta = rover_hash[*iter].rover_pose.theta;
-                }
-                else if (name == *iter) {
-                    rover_hash[name].new_lead = T;
-                    rover_hash[name].leader_theta = rover_hash[name].rover_pose.theta;
-                }
-            }
-        }
-    }
-
-}
 
 std_msgs::String globalHeading (){
     char buf[256];
