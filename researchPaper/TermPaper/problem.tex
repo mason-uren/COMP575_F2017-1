@@ -16,7 +16,7 @@ The state of a skid-steer vehicle $x$ can be represented by the triplet $(x_d, y
 When traversing to specific location we rely on a low-cost GPS unit to provide feedback for our algorithm. The sensor generates a perceived position within a, unit specific, error margin $\mathcal{E}_r$, by measuring the difference in time stamped satellite location messages and the time the message was received.  The receiver uses the messages it receives to determine the transit time of each message and computes the distance to each satellite using the velocity of light \cite{rahemi2014accurate}. Due to potential positioning error, the calculation distance should be done with at least four satellites \cite{rahemi2014accurate}. We can model this with:
 
 \begin{equation}
-	X_A= (X_s, \delta t, \mathcal{E}_r)
+	X_A= (X_s, \delta t, \mathcal{D}_r)
 \end{equation}
 
-where $X_A$ is the calculated, perceived pose, $X_s$ is the position of the satellite at the time of transimition, $\delta t$ is the differnce in transmittion and reception times, and $\mathcal{E}_r$ is the error margin.
+where $X_A$ is the calculated, perceived pose, $X_s$ is the position of the satellite at the time of transimition, $\delta t$ is the differnce in transmittion and reception times, and $\mathcal{D}_r$ is radial drift.
