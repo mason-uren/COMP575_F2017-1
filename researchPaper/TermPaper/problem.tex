@@ -1,0 +1,22 @@
+The advised communication and localization algorithms are provoked by the desire to use swarms of small inexpensive rover agents to explore unknown environments and successfully complete tasks as group. Each rover is assumed to be a small, autonomous, skid-steer, robotic vehicle driven by four independently powered wheels. Each rover is equipped with three sonar sensors, a webcam, an inertial measurement unit (IMU), wheel odometry sensors, and a global positioning system (GPS) receiver. Rotating the tires at different speeds creates skid-steer which gives the rover navigational control when maneuvering within a 2-dimensional horizontal plane. Hence, if the speed of the right tires are greater than the left, the rover will steer left and vice-versa. Although the following explanation details the use of a skid-steer robot, the proposed algorithms can be easily applied to general wheeled mobile agent with noisy positioning sensors.
+
+The state of a skid-steer vehicle $x$ can be represented by the triplet $(x_d, y_d, \theta) \in SE(2)$, where $(x_d, y_d) \in \mathbb{R}^2$ describe the position of the vehicle and $\theta \in \mathbb{S}^1$ represents the orientation. Vehicle control input $u \in \mathbb{R}^2$ is modeled $(v, w) \in \mathbb{R}^2$, where $v$ is the forward velocity, and $w$ is the rate of change in vehicle orientation. Motion evolves according the following kinematic equation:
+
+\begin{equation} \label{skid-steer}
+	\dot{x} = 
+	\begin{bmatrix}
+	\dot{x_d} \\ \dot{y_d} \\ \dot{\theta}
+	\end{bmatrix}
+	= f(x, u) = 
+	\begin{bmatrix}
+	v~cos(\theta) \\ v~sin(\theta) \\ w 
+	\end{bmatrix}
+\end{equation}
+
+When traversing to specific location we rely on a low-cost GPS unit to provide feedback for our algorithm. The sensor generates a perceived position within a, unit specific, error margin $\mathcal{E}_r$, by measuring the difference in time stamped satellite location messages and the time the message was received.  The receiver uses the messages it receives to determine the transit time of each message and computes the distance to each satellite using the velocity of light \cite{rahemi2014accurate}. Due to potential positioning error, the calculation distance should be done with at least four satellites \cite{rahemi2014accurate}. We can model this with:
+
+\begin{equation}
+	X_A= (X_s, \delta t, \mathcal{E}_r)
+\end{equation}
+
+where $X_A$ is the calculated, perceived pose, $X_s$ is the position of the satellite at the time of transimition, $\delta t$ is the differnce in transmittion and reception times, and $\mathcal{E}_r$ is the error margin.
