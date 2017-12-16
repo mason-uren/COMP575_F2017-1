@@ -1,0 +1,23 @@
+To test the validity of our proposed algorithms we needed a way to mimic the error inherit within cost-effective GPS units. Using python, we modeled the drift form our actual position to our perceived location $X_{GPS}$, seen below:
+
+\begin{equation}
+	X_{GPS} = 
+	\begin{cases}
+	(x_c, R_{max}, d_{max}) & \text{On first iteration} \\
+	(x_p, R_{max}, d_{max}) & \text{otherwise}
+	\end{cases}
+	\label{eq:genorator}
+\end{equation}
+
+where $x_c$ is the origin pose, $x_p$ is the previously generated error pose, $R_{max}$ creates the min/max bounds that dictate how far the rover can drift, and $d_{max}$ is the range the rover is allowed to drift in any direction at each iteration. 
+
+Using eq.~\ref{eq:genorator}, we can create relative agent position for both the static and dynamic cases. When dealing with a stationary agents, we simply set $x_p$ to $x_c$ and then proceed to the next iteration, but if the rover is moving we cannot do a straight substitution. Instead we need to factor in the goal position of the rover $x_g$ in combination with the timestep between sensor readings $t$ to calculate a change in distance $\triangle x$, thus $\triangle x = x_g \cdot t$. We then add the difference to $x_c$ and then substitute the final value into $x_p$, as seen below:
+
+\begin{equation}
+x_p = 
+	\begin{cases}
+		x_c & \text{static} \\
+		x_c + \triangle x & \text{dynamic}\\
+	\end{cases}
+	\label{eq:genorator_expln}
+\end{equation}
