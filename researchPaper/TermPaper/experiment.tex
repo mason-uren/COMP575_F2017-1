@@ -21,3 +21,40 @@ x_p =
 	\end{cases}
 	\label{eq:genorator_expln}
 \end{equation}
+
+Key to our algorithms is the ability to correct the induced error, adjusting the percieved pose by an offset. Assuming that $w$ is characterized by:
+
+\[
+w = 
+\begin{cases}
+	1 & \text{if} d_a < 0.1 \\
+	e^{-d_a} & \text{otherwise} \\
+\end{cases}
+\]
+
+where $d_a$ is the agent's distance to the anchor node,  $u$ is model with:
+
+\[
+\begin{cases}
+	1 & \text{if} d_g < 0.05 \\
+	\frac{1}{(1 + d_g)} & \text{otherwise} \\
+\end{cases}
+\]
+
+such that $d_g$ is the agent's distance to the goal pose, and $v$ follows:
+
+\[
+\begin{cases}
+	0 & \text{if} \frac{\delta x}{\delta t} < 0.01 \\
+	\frac{\delta x}{\delta t} \cdot 0.1 & \text{otherwise}
+\end{cases}
+\]
+
+then we can say, 
+
+\begin{equation}
+	x_c = w \cdot (x_c - x_p) + u \cdot (x_g - x_c) + v \cdot cos/sin(\theta)
+	\label{eq:dy_local}
+\end{equation}
+
+such that $x_c, x_p, x_g$ are current, previous, and goal positions respectively, and $cos/sin$ is used when considering $x$ or $y$ respectively. This allows us to account for both the static and dynamic cases of agent localization where, $w \cdot (x_c - x_p)$ corrects GPS drift, $u \cdot (x_g - x_c)$ corrects odometry error, and $v \cdot cos/sin(\theta)$ looks to see if the rover is moving and in which direction.
